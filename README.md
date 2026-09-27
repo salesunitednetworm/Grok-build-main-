@@ -20,12 +20,15 @@ Chief of Staff is the orchestrator you will build later. Grok Build is a special
 
 You do not need Chief of Staff running today. The contract is already here so that layer can plug in without rebuilding this environment.
 
+## Safety rules
+
+Grok Build must not change any current work unless you explicitly name that site and ask for the change.
+
+Before it edits existing work, it must save a restore copy (`scripts/save-copy.sh`) so a bad build can be rolled back. New work stays in this isolated repo or on a new branch. Other sites are off limits by default.
+
 ## Attach another app
 
-This environment currently includes only this repository. To have Grok Build work on another app:
-
-- Start a Cloud Agent on that app’s repo, or
-- Add that repo to this environment’s repository list in the [environment dashboard](https://cursor.com/dashboard/cloud-agents/environments/e/2764959e-baa2-11f1-977f-f6b8f2fcf9b2)
+This environment currently includes only this repository. Grok Build will not attach to another app, clone it, or edit it unless you name that app and tell it to. Even then, it saves a copy first.
 
 ## Local / Cloud Agent bootstrap
 

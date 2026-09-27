@@ -11,9 +11,21 @@
     },
     {
       "job": "extend-app",
-      "description": "Add features onto an existing app the operator points at."
+      "description": "Add features onto an existing app only after the operator explicitly names that app."
     }
   ],
+  "safety": {
+    "doNotTouchUnnamedWork": true,
+    "changeExistingWorkOnlyWhenTold": true,
+    "alwaysSaveCopyBeforeChangingExistingWork": true,
+    "saveCopyMethod": "scripts/save-copy.sh",
+    "forbiddenWithoutExplicitAsk": [
+      "clone another site",
+      "edit another site",
+      "push to another site",
+      "add another site to this environment"
+    ]
+  },
   "chiefOfStaff": {
     "compatible": true,
     "invocation": "Start or reuse a Cloud Agent on this environment and pass a job object.",
@@ -24,6 +36,7 @@
       "goal": "plain-language outcome",
       "constraints": ["optional list"]
     },
-    "handoff": "Return a branch or pull request plus a short result summary. Do not wait for Chief of Staff if none is running."
+    "handoff": "Return a branch or pull request plus a short result summary. Do not wait for Chief of Staff if none is running.",
+    "mustHonorSafety": true
   }
 }
