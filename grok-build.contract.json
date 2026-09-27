@@ -1,0 +1,29 @@
+{
+  "name": "grok-build",
+  "role": "builder",
+  "version": "1",
+  "standalone": true,
+  "notLinkedByDefault": ["presite", "pre-sight-pro"],
+  "accepts": [
+    {
+      "job": "new-app",
+      "description": "Scaffold and implement a new application in this workspace or a named target repo."
+    },
+    {
+      "job": "extend-app",
+      "description": "Add features onto an existing app the operator points at."
+    }
+  ],
+  "chiefOfStaff": {
+    "compatible": true,
+    "invocation": "Start or reuse a Cloud Agent on this environment and pass a job object.",
+    "jobShape": {
+      "from": "chief-of-staff",
+      "job": "new-app | extend-app",
+      "targetRepo": "github.com/owner/repo or this workspace",
+      "goal": "plain-language outcome",
+      "constraints": ["optional list"]
+    },
+    "handoff": "Return a branch or pull request plus a short result summary. Do not wait for Chief of Staff if none is running."
+  }
+}
