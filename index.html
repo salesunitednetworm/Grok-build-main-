@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Sales United Network company portal — land, lots, and builder sales in one place."
+    />
+    <title>Sales United Network · Company Portal</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,640&family=Outfit:wght@360;460;560&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <div id="login-screen" class="login" hidden>
+      <div class="login-card">
+        <div class="login-brand">
+          <span class="mark" aria-hidden="true">SUN</span>
+          <p>Sales United Network</p>
+          <h1>Investor &amp; partner access</h1>
+          <p class="login-lead">
+            Sign in to view the company platform. This login does not open
+            Presite or change any other account.
+          </p>
+        </div>
+        <form id="login-form">
+          <fieldset>
+            <legend>I am a</legend>
+            <label><input type="radio" name="role" value="investor" checked /> Investor</label>
+            <label><input type="radio" name="role" value="partner" /> Partner</label>
+          </fieldset>
+          <label for="login-email">Email</label>
+          <input id="login-email" name="email" type="email" autocomplete="username" required placeholder="you@company.com" />
+          <label for="login-code">Access code</label>
+          <input id="login-code" name="code" type="password" autocomplete="current-password" required placeholder="Access code" />
+          <p id="login-error" class="login-error" role="alert"></p>
+          <button type="submit">Enter the platform</button>
+        </form>
+      </div>
+    </div>
+    <div id="portal-app" class="app" hidden>
+      <aside class="rail" aria-label="Portal navigation">
+        <a class="brand" href="#/home">
+          <span class="mark" aria-hidden="true">SUN</span>
+          <span class="brand-copy">
+            <strong>Sales United Network</strong>
+            <em>Company portal</em>
+          </span>
+        </a>
+        <nav class="nav">
+          <a href="#/home" data-route="home">Home</a>
+          <a href="#/pipeline" data-route="pipeline">Pipeline</a>
+          <a href="#/sites" data-route="sites">Sites</a>
+          <a href="#/tools" data-route="tools">Tools</a>
+          <a href="#/team" data-route="team">Team</a>
+        </nav>
+        <p class="rail-note">
+          Isolated workspace. Presite stays off until you ask to connect it.
+        </p>
+      </aside>
+
+      <div class="main">
+        <header class="top">
+          <div>
+            <p class="eyebrow" id="page-eyebrow">Portal</p>
+            <h1 id="page-title">Home</h1>
+          </div>
+          <div class="top-actions">
+            <button type="button" class="ghost" id="copy-link">Copy portal link</button>
+            <button type="button" class="ghost" id="sign-out">Sign out</button>
+            <span class="who" id="who-label">Wayne Levy</span>
+          </div>
+        </header>
+
+        <section id="view-home" class="view" hidden>
+          <div class="hero">
+            <p class="date" id="today"></p>
+            <h2>One desk for land, lots, and builder conversations.</h2>
+            <p>
+              This is the Sales United Network company portal. Use it as the home
+              base for deals and sites. Outside tools stay unlinked unless you
+              tell an agent to connect them.
+            </p>
+          </div>
+          <div class="stats">
+            <article>
+              <span>Open deals</span>
+              <strong id="stat-deals">0</strong>
+            </article>
+            <article>
+              <span>Active sites</span>
+              <strong id="stat-sites">0</strong>
+            </article>
+            <article>
+              <span>Tools connected</span>
+              <strong>0</strong>
+            </article>
+          </div>
+          <div class="split">
+            <article class="panel">
+              <h3>Today’s focus</h3>
+              <ul class="focus" id="focus-list"></ul>
+            </article>
+            <article class="panel">
+              <h3>Quick note</h3>
+              <form id="note-form">
+                <label for="note-input">Leave a note for the team</label>
+                <textarea id="note-input" rows="4" maxlength="400" placeholder="Buyer wants west-facing lots under 50 feet…"></textarea>
+                <button type="submit">Save note</button>
+              </form>
+              <p class="saved-note" id="saved-note"></p>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-pipeline" class="view" hidden>
+          <div class="toolbar">
+            <label class="search">
+              <span class="sr-only">Search deals</span>
+              <input id="deal-search" type="search" placeholder="Search deals" />
+            </label>
+            <form id="deal-form" class="inline-form">
+              <label class="sr-only" for="deal-name">New deal</label>
+              <input id="deal-name" type="text" maxlength="80" placeholder="New deal or builder" required />
+              <button type="submit">Add deal</button>
+            </form>
+          </div>
+          <p class="hint">Starter records you can edit. Moving a card saves on this device.</p>
+          <div class="board" id="deal-board"></div>
+        </section>
+
+        <section id="view-sites" class="view" hidden>
+          <div class="toolbar">
+            <form id="site-form" class="inline-form">
+              <label class="sr-only" for="site-name">New site</label>
+              <input id="site-name" type="text" maxlength="80" placeholder="Lot or land name" required />
+              <input id="site-place" type="text" maxlength="80" placeholder="City or area" />
+              <button type="submit">Add site</button>
+            </form>
+          </div>
+          <div class="cards" id="site-cards"></div>
+        </section>
+
+        <section id="view-tools" class="view" hidden>
+          <article class="tool-card">
+            <div>
+              <h3>Presite</h3>
+              <p>Site plans, imagery, and sitings. Kept off this portal on purpose.</p>
+            </div>
+            <span class="badge">Not connected</span>
+          </article>
+          <article class="tool-card muted">
+            <div>
+              <h3>Documents</h3>
+              <p>Offer kits and lot packages can live here when you are ready.</p>
+            </div>
+            <span class="badge">Ready later</span>
+          </article>
+          <p class="hint">
+            Ask this agent to connect a tool when you want it. Nothing is billed
+            or signed in from this page.
+          </p>
+        </section>
+
+        <section id="view-team" class="view" hidden>
+          <article class="person">
+            <span class="avatar">WL</span>
+            <div>
+              <h3>Wayne Levy</h3>
+              <p>Broker · land, lots, and builder sales</p>
+              <a href="mailto:salesunitednetwork@gmail.com">salesunitednetwork@gmail.com</a>
+            </div>
+          </article>
+        </section>
+      </div>
+    </div>
+    <script src="assets/app.js"></script>
+  </body>
+</html>
