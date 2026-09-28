@@ -18,7 +18,33 @@
     <link rel="stylesheet" href="assets/styles.css" />
   </head>
   <body>
-    <div class="app">
+    <div id="login-screen" class="login" hidden>
+      <div class="login-card">
+        <div class="login-brand">
+          <span class="mark" aria-hidden="true">SUN</span>
+          <p>Sales United Network</p>
+          <h1>Investor &amp; partner access</h1>
+          <p class="login-lead">
+            Sign in to view the company platform. This login does not open
+            Presite or change any other account.
+          </p>
+        </div>
+        <form id="login-form">
+          <fieldset>
+            <legend>I am a</legend>
+            <label><input type="radio" name="role" value="investor" checked /> Investor</label>
+            <label><input type="radio" name="role" value="partner" /> Partner</label>
+          </fieldset>
+          <label for="login-email">Email</label>
+          <input id="login-email" name="email" type="email" autocomplete="username" required placeholder="you@company.com" />
+          <label for="login-code">Access code</label>
+          <input id="login-code" name="code" type="password" autocomplete="current-password" required placeholder="Access code" />
+          <p id="login-error" class="login-error" role="alert"></p>
+          <button type="submit">Enter the platform</button>
+        </form>
+      </div>
+    </div>
+    <div id="portal-app" class="app" hidden>
       <aside class="rail" aria-label="Portal navigation">
         <a class="brand" href="#/home">
           <span class="mark" aria-hidden="true">SUN</span>
@@ -47,7 +73,8 @@
           </div>
           <div class="top-actions">
             <button type="button" class="ghost" id="copy-link">Copy portal link</button>
-            <span class="who">Wayne Levy</span>
+            <button type="button" class="ghost" id="sign-out">Sign out</button>
+            <span class="who" id="who-label">Wayne Levy</span>
           </div>
         </header>
 

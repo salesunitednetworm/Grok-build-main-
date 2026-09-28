@@ -6,8 +6,10 @@ Presite and other paid tools stay disconnected unless someone on the team asks a
 
 ## Open the portal
 
-- Live link after GitHub Pages is on: https://salesunitednetworm.github.io/Grok-build-main-/
-- On this machine: open `index.html`, or run `python3 -m http.server 4173` and visit http://127.0.0.1:4173/
+- Send this link: https://raw.githack.com/salesunitednetworm/Grok-build-main-/cursor/company-portal-4cce/index.html
+- Investor or partner access code: `UNITED2026`
+- They choose Investor or Partner, enter their email, then the code.
+- This login does not open Presite.
 
 ## What is included
 

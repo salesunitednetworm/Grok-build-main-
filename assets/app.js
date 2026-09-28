@@ -1,4 +1,6 @@
 const STORAGE_KEY = "sun-portal-v1";
+const SESSION_KEY = "sun-portal-session";
+const ACCESS_CODE = "UNITED2026";
 
 const defaultState = {
   note: "",
@@ -48,6 +50,29 @@ function escapeHtml(value) {
 }
 
 let state = loadState();
+
+function currentSession() {
+  try {
+    return JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function showPortal(session) {
+  document.getElementById("login-screen").hidden = true;
+  document.getElementById("portal-app").hidden = false;
+  const roleLabel = session.role === "partner" ? "Partner" : "Investor";
+  document.getElementById("who-label").textContent = `${roleLabel} · ${session.email}`;
+  route();
+  render();
+}
+
+function showLogin(message) {
+  document.getElementById("portal-app").hidden = true;
+  document.getElementById("login-screen").hidden = false;
+  document.getElementById("login-error").textContent = message || "";
+}
 
 function route() {
   const name = (location.hash.replace("#/", "") || "home");
@@ -168,6 +193,33 @@ document.getElementById("copy-link").addEventListener("click", async () => {
   }
 });
 
-window.addEventListener("hashchange", route);
-route();
-render();
+document.getElementById("login-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const role = document.querySelector('input[name="role"]:checked').value;
+  const email = document.getElementById("login-email").value.trim();
+  const code = document.getElementById("login-code").value.trim().toUpperCase();
+  if (code !== ACCESS_CODE) {
+    showLogin("That access code is not right. Ask Wayne for the investor or partner code.");
+    return;
+  }
+  const session = { role, email };
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  showPortal(session);
+});
+
+document.getElementById("sign-out").addEventListener("click", () => {
+  sessionStorage.removeItem(SESSION_KEY);
+  document.getElementById("login-form").reset();
+  showLogin("");
+});
+
+window.addEventListener("hashchange", () => {
+  if (currentSession()) route();
+});
+
+const session = currentSession();
+if (session) {
+  showPortal(session);
+} else {
+  showLogin("");
+}
