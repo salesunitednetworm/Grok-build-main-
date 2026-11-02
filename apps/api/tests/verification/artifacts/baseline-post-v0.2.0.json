@@ -1,0 +1,91 @@
+{
+  "ashrae_140": {
+    "reason": "ASHRAE 140 / Guideline 14 are paid standards. This harness does not invent pass/fail.",
+    "verdict": null
+  },
+  "attic_insulation_slice": {
+    "changed": [
+      "data_source.ceiling_assembly_r",
+      "enclosure.ceiling_assembly_r"
+    ],
+    "ok": true
+  },
+  "harness_version": "0.2.0",
+  "packages": [
+    {
+      "changed": [
+        "data_source.ceiling_assembly_r",
+        "enclosure.ceiling_assembly_r"
+      ],
+      "name": "attic",
+      "ok": true
+    },
+    {
+      "changed": [
+        "enclosure.ach50"
+      ],
+      "name": "air_sealing",
+      "ok": true
+    },
+    {
+      "changed": [
+        "data_source.dhw_fuel",
+        "data_source.dhw_type",
+        "data_source.dhw_uef",
+        "systems.dhw_type",
+        "systems.dhw_uef"
+      ],
+      "name": "hpwh",
+      "ok": true
+    },
+    {
+      "changed": [
+        "data_source.ceiling_assembly_r",
+        "enclosure.ach50",
+        "enclosure.ceiling_assembly_r"
+      ],
+      "name": "attic+air_sealing",
+      "ok": true
+    },
+    {
+      "changed": [
+        "data_source.ceiling_assembly_r",
+        "data_source.dhw_fuel",
+        "data_source.dhw_type",
+        "data_source.dhw_uef",
+        "enclosure.ceiling_assembly_r",
+        "systems.dhw_type",
+        "systems.dhw_uef"
+      ],
+      "name": "attic+hpwh",
+      "ok": true
+    },
+    {
+      "changed": [
+        "data_source.dhw_fuel",
+        "data_source.dhw_type",
+        "data_source.dhw_uef",
+        "enclosure.ach50",
+        "systems.dhw_type",
+        "systems.dhw_uef"
+      ],
+      "name": "air_sealing+hpwh",
+      "ok": true
+    },
+    {
+      "changed": [
+        "data_source.ceiling_assembly_r",
+        "data_source.dhw_fuel",
+        "data_source.dhw_type",
+        "data_source.dhw_uef",
+        "enclosure.ach50",
+        "enclosure.ceiling_assembly_r",
+        "systems.dhw_type",
+        "systems.dhw_uef"
+      ],
+      "name": "attic+air_sealing+hpwh",
+      "ok": true
+    }
+  ],
+  "written_at": "2026-11-02T16:44:16+00:00"
+}

@@ -1,0 +1,10 @@
+zipcode,zipcode_city,zipcode_state,zipcode_latitude,zipcode_longitude,zipcode_energystar_zone,zipcode_iecc_zone,zipcode_utc_offset,station_wmo,station_distance,station_name,station_state,station_altitude,station_latitude,station_longitude,station_filename
+01001,Agawam,MA,42.0626,-72.6252,northern,5A,-5,744915,12.98582884,Westfield Barnes Muni AP,MA,82,42.158,-72.716,USA_MA_Westfield-Barnes.Muni.AP.744915_TMY3.epw
+10001,New York,NY,40.75,-73.9967,north_central,4A,-5,725033,4.440820101,NY Central Prk Obs Belv,NY,47,40.783,-73.967,USA_NY_New.York-Central.Park.725033_TMY3.epw
+33101,Miami,FL,25.779,-80.1982,southern,1A,-5,722020,11.86979144,Miami IAP,FL,9,25.791,-80.316,USA_FL_Miami.Intl.AP.722020_TMY3.epw
+80202,Denver,CO,39.7512,-104.997,northern,5B,-7,724699,19.46223587,Broomfield Jeffco,CO,1728,39.9,-105.117,USA_CO_Boulder-Broomfield-Jefferson.County.AP.724699_TMY3.epw
+80903,Colorado Springs,CO,38.832,-104.816,northern,5B,-7,724660,11.35563421,Colorado Springs Muni AP,CO,1880,38.81,-104.688,USA_CO_Colorado.Springs-Peterson.Field.724660_TMY3.epw
+78701,Austin,TX,30.2721,-97.7424,southern,2A,-6,722544,5.693937485,Austin Camp Mabry,TX,200,30.321,-97.76,USA_TX_Austin-Camp.Mabry.722544_TMY3.epw
+85001,Phoenix,AZ,33.4507,-112.068,southern,2B,-7,722780,6.452656533,Phoenix Sky Harbor IAP,AZ,337,33.428,-112.004,USA_AZ_Phoenix-Sky.Harbor.Intl.AP.722780_TMY3.epw
+97201,Portland,OR,45.4978,-122.694,northern,4C,-8,726980,12.76892365,Portland IAP,OR,32,45.596,-122.609,USA_OR_Portland.Intl.AP.726980_TMY3.epw
+94102,San Francisco,CA,37.7795,-122.42,north_central,3C,-8,724940,18.38385901,San Francisco IAP,CA,5,37.62,-122.365,USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw

@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hems
+      POSTGRES_PASSWORD: hems
+      POSTGRES_DB: hems
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hems"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+
+  api:
+    build: ./apps/api
+    environment:
+      DATABASE_URL: postgresql+psycopg://hems:hems@db:5432/hems
+      ARTIFACT_ROOT: /data/artifacts
+      WORKER_INLINE: "false"
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      OPENSTUDIO_CLI: ${OPENSTUDIO_CLI:-}
+      OPENSTUDIO_HPXML_DIR: ${OPENSTUDIO_HPXML_DIR:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - artifacts:/data/artifacts
+
+  worker:
+    build: ./apps/api
+    command: python -m app.worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://hems:hems@db:5432/hems
+      ARTIFACT_ROOT: /data/artifacts
+      OPENSTUDIO_CLI: ${OPENSTUDIO_CLI:-}
+      OPENSTUDIO_HPXML_DIR: ${OPENSTUDIO_HPXML_DIR:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - artifacts:/data/artifacts
+
+  web:
+    build: ./apps/web
+    environment:
+      API_INTERNAL_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  # Optional EnergyPlus worker. Start with:
+  #   docker compose --profile simulator up --build --scale worker=0
+  # Uses nrel/openstudio:3.11.0 + OpenStudio-HPXML v1.12.0. Do not float latest.
+  simulator-worker:
+    profiles: ["simulator"]
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.simulator
+    command: python3 -m app.worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://hems:hems@db:5432/hems
+      ARTIFACT_ROOT: /data/artifacts
+      OPENSTUDIO_CLI: /usr/local/openstudio-3.11.0/bin/openstudio
+      OPENSTUDIO_HPXML_DIR: /opt/OpenStudio-HPXML-1.12.0
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - artifacts:/data/artifacts
+
+volumes:
+  pgdata:
+  artifacts:
