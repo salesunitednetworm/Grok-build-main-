@@ -1,0 +1,16 @@
+{
+  "_comment": "Parser fixture only. Shaped like OpenStudio-HPXML results_annual.json keys. Not a simulation of any user home.",
+  "Energy Use: Total (MBtu)": 120.0,
+  "Energy Use: Net (MBtu)": 120.0,
+  "Fuel Use: Electricity: Total (MBtu)": 40.0,
+  "Fuel Use: Natural Gas: Total (MBtu)": 80.0,
+  "End Use: Electricity: Heating (MBtu)": 4.0,
+  "End Use: Electricity: Cooling (MBtu)": 8.0,
+  "End Use: Electricity: Hot Water (MBtu)": 10.0,
+  "End Use: Electricity: Lighting Interior (MBtu)": 4.0,
+  "End Use: Electricity: Refrigerator (MBtu)": 2.2,
+  "End Use: Natural Gas: Heating (MBtu)": 75.0,
+  "End Use: Natural Gas: Hot Water (MBtu)": 5.0,
+  "HVAC Design Load: Heating: Total (Btu/h)": 35000,
+  "HVAC Design Load: Cooling Sensible: Total (Btu/h)": 24000
+}
