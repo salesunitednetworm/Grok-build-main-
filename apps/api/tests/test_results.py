@@ -28,6 +28,17 @@ def test_missing_keys_stay_none():
     assert parsed.end_uses == {}
 
 
+def test_parse_official_nested_engine_file():
+    data = json.loads((Path(__file__).parent / "fixtures" / "results_annual.official-base.json").read_text())
+    parsed = parse_annual_results(data)
+    assert parsed.electricity_mbtu == 39.218
+    assert parsed.electricity_kwh == pytest.approx(39.218 * 1_000_000 / 3412)
+    assert parsed.natural_gas_therm == pytest.approx(326.38)
+    assert parsed.heating_design_load_btuh == 41543
+    assert parsed.cooling_sensible_design_load_btuh == 27993
+    assert parsed.loads_qualification == "preliminary"
+
+
 def test_nested_annual_json():
     parsed = parse_annual_results(
         {

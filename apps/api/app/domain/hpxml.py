@@ -46,8 +46,8 @@ def generate_hpxml(model: CanonicalBuilding, building_id: str = "MyBuilding") ->
     site = _el("Site", building)
     _el("SiteID", site, id="SiteID")
     address = _el("Address", site)
-    _el("ZipCode", address, model.site.postal_code)
     _el("StateCode", address, model.site.state_code)
+    _el("ZipCode", address, model.site.postal_code)
     status = _el("ProjectStatus", building)
     _el("EventType", status, "proposed workscope")
 

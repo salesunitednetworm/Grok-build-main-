@@ -51,6 +51,7 @@ After generation, before persist:
 - Well-formed XML
 - Root `HPXML` namespace `http://hpxmlonline.com/2025/12`
 - `schemaVersion` `5.0` (v5.0-rc1 documents use this on the official 1.12.0 sample)
+- `Address` child order is `StateCode` then `ZipCode` (XSD rejects the reverse)
 - Present: SoftwareInfo, Building, BuildingSummary, Enclosure (infiltration + at least one wall, ceiling, window set), HVAC heating **and** cooling, DHW
 - IDs unique; HVAC `DistributionSystem` idrefs resolve
 

@@ -140,7 +140,15 @@ Domain code talks to ports. First photo implementation, when needed, is `PreSite
 
 ## Local development
 
-`docker compose up` starts PostgreSQL, API, worker, and web. The simulator service is optional (`--profile simulator`) and must pin OpenStudio 3.11.0 + OS-HPXML 1.12.0. Without that profile, the API still serves the slice and jobs complete as `unavailable`.
+`docker compose up` starts PostgreSQL, API, worker, and web. The simulator worker is optional (`docker compose --profile simulator up --scale worker=0`) and is built from `nrel/openstudio:3.11.0` plus OpenStudio-HPXML 1.12.0. Without that profile or a host install, the API still serves the slice and jobs complete as `unavailable`.
+
+On Ubuntu 24.04 x86_64, `scripts/install-openstudio.sh` places:
+
+- CLI: `/usr/local/openstudio-3.11.0/bin/openstudio` (reports `3.11.0+241b8abb4d`)
+- EnergyPlus: `/usr/local/openstudio-3.11.0/EnergyPlus/energyplus` (`25.2.0-cf7368216c`)
+- Measures + weather: `/opt/OpenStudio-HPXML-1.12.0` (includes `weather/USA_CO_Denver.Intl.AP.725650_TMY3.epw`)
+
+A separate energyplus.net TMY3 zip is not required for the Denver default home. Pins did not change.
 
 Without Docker, the API accepts `DATABASE_URL` (PostgreSQL) or a local SQLite file for unit tests only. Production and Compose use PostgreSQL.
 

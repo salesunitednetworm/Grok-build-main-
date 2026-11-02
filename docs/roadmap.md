@@ -14,11 +14,17 @@ Ship in `Grok-build-main-` on a **new branch from `main`**, leaving draft PRs #1
 - Tests for validation, HPXML emit, result parse, comparison-null-without-simulation, API
 - No mock kWh, no mock % savings, no Pages deploy at repo root
 
-## Next — make the engine real on developer machines
+## Now also — engine install (done on Ubuntu 24.04)
 
-- Document installing OpenStudio **3.11.0** + OpenStudio-HPXML **1.12.0** + TMY3 cache
-- Optional Compose `--profile simulator` with that pin only
-- ZIP → TMY3 station mapping using OS-HPXML’s `zipcode_weather_stations.csv`
+Pins **unchanged**: OpenStudio **3.11.0** (`241b8abb4d`), OpenStudio-HPXML **v1.12.0**, EnergyPlus **25.2.0**, HPXML **v5.0-rc1**.
+
+- Host install: `scripts/install-openstudio.sh` (official NatLabRockies tarball + zip). Weather for Denver TMY3 ships in the 1.12.0 `weather/` folder; do not use EnergyPlus 26.2.0.
+- Optional Compose `--profile simulator` builds `nrel/openstudio:3.11.0` + OS-HPXML 1.12.0 (`--scale worker=0` to replace the lite worker).
+- Live default home + attic R-49 runs persist parsed annual kWh/therm. Still not DOE/BPI/ACCA approved.
+
+## Next — weather UX and validation translation
+
+- ZIP → TMY3 station mapping using OS-HPXML’s `zipcode_weather_stations.csv` beyond the default Denver station
 - Surface `in.xml` software defaults in the UI (`dataSource='software'`)
 - Translate XSD/Schematron errors onto form fields
 - Store `run.log` warnings next to results

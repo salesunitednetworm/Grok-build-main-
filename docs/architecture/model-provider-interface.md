@@ -58,14 +58,16 @@ OPENSTUDIO_HPXML_DIR=/opt/OpenStudio-HPXML-1.12.0
 OPENSTUDIO_HPXML_VERSION=1.12.0
 ```
 
-Documented command (our code owns `-o`, JSON output, and artifact pickup):
+Documented command (cwd is `OPENSTUDIO_HPXML_DIR`; `-o` is the job workdir; OS-HPXML writes `<workdir>/run/results_annual.json`):
 
 ```
 openstudio workflow/run_simulation.rb \
   -x path/to/building.xml \
-  -o run_dir \
+  -o workdir \
   --output-format json
 ```
+
+Address element order in HPXML v5.0-rc1 is `StateCode` then `ZipCode`. Reversing them fails XSD (`StateCode` unexpected after `ZipCode`).
 
 Optional later: `--hourly fuels`, `--add-stochastic-schedules`, OSW JSON for Measure arguments. v1 does not skip validation unless we already ran Schematron ourselves.
 
@@ -128,7 +130,7 @@ Natural gas display: `therm = MBtu × 10`.
 
 ## Unavailable contract (this environment)
 
-The Cloud Agent image used to implement the first slice does not include OpenStudio or EnergyPlus. The adapter **must** still:
+If the CLI, 1.12.0 tree, or weather file is missing, the adapter **must** still:
 
 - Generate and persist HPXML
 - Enqueue and finish jobs as `unavailable`
@@ -136,7 +138,7 @@ The Cloud Agent image used to implement the first slice does not include OpenStu
 - Leave `energy_results` empty
 - Refuse comparison deltas
 
-A host that installs the pinned CLI can set the env vars and get real kWh without changing the interface.
+On a host with the pinned CLI (Ubuntu 24.04 tarball at `/usr/local/openstudio-3.11.0` plus `/opt/OpenStudio-HPXML-1.12.0`), the same interface persists parsed EnergyPlus kWh. Docker Compose `--profile simulator` is the container equivalent. Do not invent kWh when the engine is absent.
 
 ## Future providers (not implemented)
 

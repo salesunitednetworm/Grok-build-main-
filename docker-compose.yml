@@ -55,6 +55,26 @@ services:
     depends_on:
       - api
 
+  # Optional EnergyPlus worker. Start with:
+  #   docker compose --profile simulator up --build --scale worker=0
+  # Uses nrel/openstudio:3.11.0 + OpenStudio-HPXML v1.12.0. Do not float latest.
+  simulator-worker:
+    profiles: ["simulator"]
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.simulator
+    command: python3 -m app.worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://hems:hems@db:5432/hems
+      ARTIFACT_ROOT: /data/artifacts
+      OPENSTUDIO_CLI: /usr/local/openstudio-3.11.0/bin/openstudio
+      OPENSTUDIO_HPXML_DIR: /opt/OpenStudio-HPXML-1.12.0
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - artifacts:/data/artifacts
+
 volumes:
   pgdata:
   artifacts:

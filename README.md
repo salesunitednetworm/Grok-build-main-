@@ -24,14 +24,20 @@ docker compose up --build
 - UI: http://localhost:3000
 - API: http://localhost:8000/docs
 
-Without the OpenStudio CLI mounted, jobs complete as **`unavailable`**. HPXML is still generated and stored. No fake energy results.
+Without the OpenStudio CLI, jobs complete as **`unavailable`**. HPXML is still generated and stored. No fake energy results.
 
-To run real simulations, install OpenStudio 3.11.0 and OpenStudio-HPXML 1.12.0 on the host and pass:
+On Ubuntu 24.04 x86_64, install the pinned engine (official tarball + OS-HPXML zip; Denver TMY3 is inside the 1.12.0 tree):
 
 ```bash
-OPENSTUDIO_CLI=/usr/local/openstudio-3.11.0/bin/openstudio \
-OPENSTUDIO_HPXML_DIR=/opt/OpenStudio-HPXML-1.12.0 \
-docker compose up --build
+./scripts/install-openstudio.sh
+export OPENSTUDIO_CLI=/usr/local/openstudio-3.11.0/bin/openstudio
+export OPENSTUDIO_HPXML_DIR=/opt/OpenStudio-HPXML-1.12.0
+```
+
+Optional Compose profile builds `nrel/openstudio:3.11.0` plus OS-HPXML 1.12.0 as the worker (`--scale worker=0` avoids a second worker without the engine):
+
+```bash
+docker compose --profile simulator up --build --scale worker=0
 ```
 
 ## Local development (no Docker)

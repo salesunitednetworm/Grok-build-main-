@@ -61,6 +61,11 @@ def test_upgrade_changes_only_ceiling_r():
     assert "49.0" in upgraded
 
 
+def test_address_schema_order_state_then_zip():
+    xml = generate_hpxml(_model())
+    assert xml.index("<StateCode>") < xml.index("<ZipCode>")
+
+
 def test_inspect_rejects_wrong_namespace():
     errors = inspect_hpxml("<HPXML schemaVersion='5.0'></HPXML>")
     assert any(err["code"] == "namespace" for err in errors)

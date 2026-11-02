@@ -80,15 +80,16 @@ class OpenStudioHpxmlProvider:
             )
 
         cli = settings.openstudio_cli or shutil.which("openstudio")
-        script = Path(settings.openstudio_hpxml_dir) / "workflow" / "run_simulation.rb"
-        run_dir = workdir / "run"
+        hpxml_dir = Path(settings.openstudio_hpxml_dir)
+        script = hpxml_dir / "workflow" / "run_simulation.rb"
+        # OS-HPXML writes artifacts under <output>/run/, not <output>/ itself.
         command = [
             str(cli),
             str(script),
             "-x",
-            str(xml_path),
+            str(xml_path.resolve()),
             "-o",
-            str(run_dir),
+            str(workdir.resolve()),
             "--output-format",
             "json",
         ]
@@ -99,6 +100,7 @@ class OpenStudioHpxmlProvider:
                 capture_output=True,
                 text=True,
                 timeout=300,
+                cwd=str(hpxml_dir),
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             return ProviderRun(
@@ -108,21 +110,27 @@ class OpenStudioHpxmlProvider:
             )
 
         artifacts: dict[str, Path] = {"hpxml_input": xml_path}
-        log_path = run_dir / "run.log"
+        run_dir = workdir / "run"
         if completed.stdout or completed.stderr:
-            fallback_log = workdir / "run.log"
-            fallback_log.write_text((completed.stdout or "") + (completed.stderr or ""), encoding="utf-8")
+            fallback_log = workdir / "cli.log"
+            fallback_log.write_text((completed.stdout or "") + "\n" + (completed.stderr or ""), encoding="utf-8")
             artifacts["run_log"] = fallback_log
-        if log_path.exists():
-            artifacts["run_log"] = log_path
-        in_xml = run_dir / "in.xml"
-        if in_xml.exists():
-            artifacts["in_xml"] = in_xml
-        annual = run_dir / "results_annual.json"
-        if annual.exists():
-            artifacts["results_annual_json"] = annual
+        for candidate in (run_dir / "run.log", workdir / "run.log"):
+            if candidate.exists():
+                artifacts["run_log"] = candidate
+                break
+        for candidate in (run_dir / "in.xml", workdir / "in.xml"):
+            if candidate.exists():
+                artifacts["in_xml"] = candidate
+                break
+        annual = None
+        for candidate in (run_dir / "results_annual.json", workdir / "results_annual.json"):
+            if candidate.exists():
+                annual = candidate
+                artifacts["results_annual_json"] = candidate
+                break
 
-        if completed.returncode != 0 or not annual.exists():
+        if completed.returncode != 0 or annual is None:
             message = (completed.stderr or completed.stdout or "OpenStudio-HPXML run failed").strip()
             return ProviderRun(status="failed", error_message=message[:4000], artifacts=artifacts)
 

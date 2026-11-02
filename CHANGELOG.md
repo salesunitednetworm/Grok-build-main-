@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1 — 2026-11-02
+
+- Install OpenStudio 3.11.0 (`241b8abb4d`) and OpenStudio-HPXML v1.12.0 on Ubuntu 24.04; EnergyPlus reports `25.2.0-cf7368216c`.
+- Fix HPXML `Address` element order (`StateCode` before `ZipCode`) so the EnergyPlus use-case XSD accepts our file.
+- Provider picks artifacts from OS-HPXML's `<output>/run/` directory and runs with cwd at the 1.12.0 tree.
+- Live baseline + attic R-49 upgrade persist parsed EnergyPlus kWh/therm (no invented values).
+- Add `scripts/install-openstudio.sh` and Compose `--profile simulator` (`Dockerfile.simulator` on `nrel/openstudio:3.11.0`).
+- Pins unchanged: 1.12.0 / 3.11.0 / 25.2.0 / HPXML v5.0-rc1.
+
 ## 0.1.0 — 2026-11-02
 
 - Add architecture and roadmap under `docs/` (system design, database, model provider interface, energy model validation).

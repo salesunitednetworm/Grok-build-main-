@@ -1,0 +1,26 @@
+# Optional engine worker: official OpenStudio 3.11.0 image + OS-HPXML 1.12.0.
+# Used by: docker compose --profile simulator up --build --scale worker=0
+FROM nrel/openstudio:3.11.0
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip python3-venv curl unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /srv/api
+COPY requirements.txt .
+RUN pip3 install --break-system-packages --no-cache-dir -r requirements.txt
+
+RUN curl -fL --retry 4 -o /tmp/oshpxml.zip \
+      https://github.com/NatLabRockies/OpenStudio-HPXML/releases/download/v1.12.0/OpenStudio-HPXML-v1.12.0.zip \
+    && unzip -q /tmp/oshpxml.zip -d /tmp \
+    && mv /tmp/OpenStudio-HPXML /opt/OpenStudio-HPXML-1.12.0 \
+    && rm /tmp/oshpxml.zip
+
+COPY app ./app
+
+ENV PYTHONPATH=/srv/api
+ENV OPENSTUDIO_CLI=/usr/local/openstudio-3.11.0/bin/openstudio
+ENV OPENSTUDIO_HPXML_DIR=/opt/OpenStudio-HPXML-1.12.0
+ENV ARTIFACT_ROOT=/data/artifacts
+
+CMD ["python3", "-m", "app.worker"]
