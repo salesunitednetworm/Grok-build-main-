@@ -1,0 +1,17 @@
+{
+  "ashrae_140": {
+    "reason": "ASHRAE 140 / Guideline 14 are paid standards. This harness does not invent pass/fail.",
+    "verdict": null
+  },
+  "generated_emit_errors": [],
+  "generated_xsd_errors": [],
+  "harness_version": "0.2.0",
+  "hpwh_water_heater_type": "heat pump water heater",
+  "official_samples_present": [
+    "base",
+    "hpwh",
+    "xsd"
+  ],
+  "written_at": "2026-11-02T16:44:16+00:00",
+  "xsd_available": true
+}

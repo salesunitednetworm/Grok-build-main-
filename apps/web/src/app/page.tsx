@@ -58,7 +58,8 @@ export default function HomePage() {
       <div className="card">
         <h1>Create a home</h1>
         <p className="fine">
-          Start the modeling slice: building data → validate → HPXML → simulate → one attic upgrade.
+          Building data → validate → HPXML → simulate → attic compare → bills → calibration scaffolding →
+          packages. Calibration is preliminary / not certified.
         </p>
         <form onSubmit={onCreate} className="grid">
           <label>

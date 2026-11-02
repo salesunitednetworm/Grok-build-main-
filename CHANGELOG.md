@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 — 2026-11-02
+
+- BPI-2400 *scaffolding*: utility history, 330-day quality gate, residuals vs simulated annual fuels, permitted setpoint adjustments only. Models labeled `uncalibrated` or `calibrated` with `preliminary_not_certified`. Never `bpi_2400_calibrated`.
+- Documented gaps on every calibration run (no G14 CVRMSE, no 183-day HDD/CDD path, no delivered-fuel path, no kWhe %, no §3.4 table copy).
+- Verification harness under `apps/api/tests/verification/` with versioned artifacts: HPXML emit + XSD, baseline/post ECM-only, fuel totals, official OS-HPXML samples. No invented ASHRAE 140 pass/fail.
+- First package optimizer: attic R-49, air sealing ACH50 1.5, HPWH UEF 3.5 — all seven combinations re-run EnergyPlus. Absolute deltas only.
+- HPXML `WaterHeaterType` may be `heat pump water heater`.
+- UI steps for bills, calibration labels, and packages.
+
 ## 0.1.1 — 2026-11-02
 
 - Install OpenStudio 3.11.0 (`241b8abb4d`) and OpenStudio-HPXML v1.12.0 on Ubuntu 24.04; EnergyPlus reports `25.2.0-cf7368216c`.

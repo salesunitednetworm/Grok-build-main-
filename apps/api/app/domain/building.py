@@ -11,7 +11,7 @@ FoundationType = Literal["conditioned_basement", "slab_on_grade"]
 HeatingType = Literal["furnace"]
 CoolingType = Literal["central air conditioner"]
 HeatingFuel = Literal["natural gas", "electricity"]
-DhwType = Literal["storage water heater"]
+DhwType = Literal["storage water heater", "heat pump water heater"]
 DhwFuel = Literal["electricity", "natural gas"]
 DataSource = Literal["user", "default", "measured"]
 

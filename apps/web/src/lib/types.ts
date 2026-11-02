@@ -121,3 +121,41 @@ export type EngineStatus = {
   reason: string | null;
   regulatory: string[];
 };
+
+export type UtilityHistory = {
+  id: string;
+  as_of: string;
+  periods: Record<string, unknown>[];
+  quality: {
+    any_fuel_qualifies: boolean;
+    label: string;
+    gaps: string[];
+    fuels: Record<string, { measured_kwh?: number | null; measured_therm?: number | null; qualifies_for_detailed_path?: boolean }>;
+  };
+};
+
+export type CalibrationRun = {
+  id: string;
+  model_label: string;
+  qualification: string;
+  run_status: string;
+  compliance_claim: string;
+  residuals: Record<string, unknown>[];
+  proposed_adjustments: { field: string; from_value: number; to_value: number; reason: string; permitted: boolean }[];
+  applied_adjustments: { field: string; from_value: number; to_value: number }[];
+  gaps: string[];
+  notes: string;
+  adjusted_job: Job | null;
+};
+
+export type PackageProposal = {
+  id: string;
+  name: string;
+  measures: string[];
+  status: string;
+  electricity_kwh_delta: number | null;
+  natural_gas_therm_delta: number | null;
+  total_mbtu_delta: number | null;
+  notes: string | null;
+  upgrade_job: Job | null;
+};

@@ -1,0 +1,15 @@
+{
+  "ashrae_140": {
+    "reason": "ASHRAE 140 / Guideline 14 are paid standards. This harness does not invent pass/fail.",
+    "verdict": null
+  },
+  "ashrae_140_reason": "Paid standard; harness records schema/sample presence only.",
+  "ashrae_140_verdict": null,
+  "base_xml": "/opt/OpenStudio-HPXML-1.12.0/workflow/sample_files/base.xml",
+  "harness_version": "0.2.0",
+  "hpwh_xml": "/opt/OpenStudio-HPXML-1.12.0/workflow/sample_files/base-dhw-tank-heat-pump.xml",
+  "live_engine_run": false,
+  "written_at": "2026-11-02T16:44:16+00:00",
+  "xsd_base_errors": [],
+  "xsd_hpwh_errors": []
+}

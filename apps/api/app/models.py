@@ -152,3 +152,55 @@ class Comparison(Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     scenario: Mapped[UpgradeScenario] = relationship(back_populates="comparison")
+
+
+class UtilityHistory(Base):
+    __tablename__ = "utility_histories"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    home_id: Mapped[str] = mapped_column(ForeignKey("homes.id"), unique=True, nullable=False)
+    as_of: Mapped[str] = mapped_column(String(10), nullable=False)
+    periods: Mapped[list] = mapped_column(JSON, nullable=False)
+    quality: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class CalibrationRun(Base):
+    __tablename__ = "calibration_runs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    home_id: Mapped[str] = mapped_column(ForeignKey("homes.id"), nullable=False, index=True)
+    utility_history_id: Mapped[str] = mapped_column(ForeignKey("utility_histories.id"), nullable=False)
+    baseline_job_id: Mapped[str | None] = mapped_column(ForeignKey("simulation_jobs.id"))
+    adjusted_model_id: Mapped[str | None] = mapped_column(ForeignKey("building_models.id"))
+    adjusted_job_id: Mapped[str | None] = mapped_column(ForeignKey("simulation_jobs.id"))
+    model_label: Mapped[str] = mapped_column(String(32), nullable=False, default="uncalibrated")
+    qualification: Mapped[str] = mapped_column(String(64), nullable=False, default="none")
+    run_status: Mapped[str] = mapped_column(String(64), nullable=False)
+    compliance_claim: Mapped[str] = mapped_column(String(64), nullable=False, default="not_bpi_2400_calibrated")
+    residuals: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    proposed_adjustments: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    applied_adjustments: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    gaps: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    notes: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class PackageProposal(Base):
+    __tablename__ = "package_proposals"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    home_id: Mapped[str] = mapped_column(ForeignKey("homes.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    measures: Mapped[list] = mapped_column(JSON, nullable=False)
+    measure_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    baseline_model_id: Mapped[str] = mapped_column(ForeignKey("building_models.id"), nullable=False)
+    upgraded_model_id: Mapped[str] = mapped_column(ForeignKey("building_models.id"), nullable=False)
+    baseline_job_id: Mapped[str] = mapped_column(ForeignKey("simulation_jobs.id"), nullable=False)
+    upgrade_job_id: Mapped[str] = mapped_column(ForeignKey("simulation_jobs.id"), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    electricity_kwh_delta: Mapped[float | None] = mapped_column(Float)
+    natural_gas_therm_delta: Mapped[float | None] = mapped_column(Float)
+    total_mbtu_delta: Mapped[float | None] = mapped_column(Float)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

@@ -61,6 +61,10 @@ npm run dev
 
 Create Home → Enter Building Data → Validate → Generate HPXML → Run OpenStudio-HPXML/EnergyPlus → Store artifacts → Display energy results → Compare one attic-insulation upgrade.
 
+Utility history, residual scaffolding, and attic / air-sealing / HPWH packages sit on the same path. Calibration is **preliminary / not certified** and is not a BPI-2400 claim. Packages re-run EnergyPlus; they do not add percentages.
+
+Verification harness: `apps/api/tests/verification/` (versioned artifacts; no ASHRAE 140 verdicts).
+
 ## Attribution
 
 OpenStudio, EnergyPlus, and OpenStudio-HPXML are used as unmodified engines under their BSD-3-like licenses. This product is not named OpenStudio or EnergyPlus. See `NOTICE`.

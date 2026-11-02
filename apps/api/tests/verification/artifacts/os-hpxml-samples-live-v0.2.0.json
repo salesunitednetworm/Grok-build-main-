@@ -1,0 +1,17 @@
+{
+  "ashrae_140": {
+    "reason": "ASHRAE 140 / Guideline 14 are paid standards. This harness does not invent pass/fail.",
+    "verdict": null
+  },
+  "ashrae_140_verdict": null,
+  "electricity_kwh": 11494.138335287222,
+  "electricity_mbtu": 39.218,
+  "harness_version": "0.2.0",
+  "heating_design_load_btuh": 41543.0,
+  "loads_qualification": "preliminary",
+  "natural_gas_mbtu": 32.638,
+  "natural_gas_therm": 326.38,
+  "status": "succeeded",
+  "total_mbtu": 71.856,
+  "written_at": "2026-11-02T16:44:19+00:00"
+}

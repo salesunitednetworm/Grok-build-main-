@@ -4,9 +4,20 @@ import { useParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { formatDelta, formatEnergy } from "@/lib/format";
-import type { BuildingModel, BuildingPayload, EngineStatus, Home, HpxmlDoc, Job, Scenario } from "@/lib/types";
+import type {
+  BuildingModel,
+  BuildingPayload,
+  CalibrationRun,
+  EngineStatus,
+  Home,
+  HpxmlDoc,
+  Job,
+  PackageProposal,
+  Scenario,
+  UtilityHistory,
+} from "@/lib/types";
 
-const STEPS = ["Building", "Validate", "HPXML", "Simulate", "Results", "Upgrade"] as const;
+const STEPS = ["Building", "Validate", "HPXML", "Simulate", "Results", "Upgrade", "Bills", "Calibrate", "Packages"] as const;
 
 function setPath(payload: BuildingPayload, path: string, value: string | number) {
   const clone = structuredClone(payload);
@@ -35,6 +46,10 @@ export default function HomeDetailPage() {
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [status, setStatus] = useState<EngineStatus | null>(null);
   const [ceilingR, setCeilingR] = useState(49);
+  const [billsText, setBillsText] = useState("[]");
+  const [history, setHistory] = useState<UtilityHistory | null>(null);
+  const [calibration, setCalibration] = useState<CalibrationRun | null>(null);
+  const [packages, setPackages] = useState<PackageProposal[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -54,6 +69,23 @@ export default function HomeDetailPage() {
         if (jobs[0]) setJob(jobs[0]);
         const scenarios = await api.scenarios(id);
         if (scenarios[0]) setScenario(scenarios[0]);
+        try {
+          const bills = await api.getBills(id);
+          setHistory(bills);
+          setBillsText(JSON.stringify(bills.periods, null, 2));
+        } catch {
+          setHistory(null);
+        }
+        try {
+          setCalibration(await api.getCalibration(id));
+        } catch {
+          setCalibration(null);
+        }
+        try {
+          setPackages(await api.packages(id));
+        } catch {
+          setPackages([]);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Load failed");
       }
@@ -118,6 +150,46 @@ export default function HomeDetailPage() {
       setStep(next.energy_result ? "Results" : "Simulate");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Simulate failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveBills() {
+    setBusy(true);
+    setError(null);
+    try {
+      const periods = JSON.parse(billsText);
+      setHistory(await api.saveBills(id, { as_of: "2026-01-15", periods }));
+      setStep("Bills");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bills failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function calibrate(apply: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      setCalibration(await api.calibrate(id, apply));
+      setStep("Calibrate");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Calibration failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function proposePackages() {
+    setBusy(true);
+    setError(null);
+    try {
+      setPackages(await api.createPackages(id));
+      setStep("Packages");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Packages failed");
     } finally {
       setBusy(false);
     }
@@ -445,6 +517,94 @@ export default function HomeDetailPage() {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {step === "Bills" && (
+        <div className="card">
+          <h2>Utility history</h2>
+          <p className="fine">
+            Paste monthly periods as JSON. This is billed use, not EnergyPlus output. Quality gate implements the
+            documented 330-day span only. The 183-day HDD/CDD path is a cited gap.
+          </p>
+          <textarea value={billsText} onChange={(e) => setBillsText(e.target.value)} rows={14} className="xml" />
+          <div className="row" style={{ marginTop: 12 }}>
+            <button type="button" disabled={busy} onClick={() => void saveBills()}>
+              Save utility history
+            </button>
+          </div>
+          {history && (
+            <p className="fine" style={{ marginTop: 12 }}>
+              Gate: {history.quality.label}. Qualifies: {String(history.quality.any_fuel_qualifies)}. Not BPI-2400
+              certified.
+            </p>
+          )}
+        </div>
+      )}
+
+      {step === "Calibrate" && (
+        <div className="card">
+          <h2>Calibration scaffolding</h2>
+          <p className="fine">
+            Residuals are annual EnergyPlus totals minus annualized bills. Only documented permitted adjustments
+            (setpoints that are not measured) may be applied. Labels are uncalibrated vs calibrated (preliminary / not
+            certified). This is not a BPI-2400 compliance claim.
+          </p>
+          <div className="row">
+            <button type="button" disabled={busy} onClick={() => void calibrate(false)}>
+              Compute residuals
+            </button>
+            <button type="button" className="secondary" disabled={busy} onClick={() => void calibrate(true)}>
+              Apply permitted adjustments and re-run
+            </button>
+          </div>
+          {calibration && (
+            <div style={{ marginTop: 16 }}>
+              <p>
+                Model: <span className={`status ${calibration.model_label}`}>{calibration.model_label}</span> ·{" "}
+                {calibration.qualification} · {calibration.compliance_claim}
+              </p>
+              <p className="fine">{calibration.notes}</p>
+              <p className="fine">Gaps: {calibration.gaps.length} documented (including G14 / 183-day / kWhe).</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {step === "Packages" && (
+        <div className="card">
+          <h2>Package optimizer</h2>
+          <p className="fine">
+            Attic R-49, air sealing to ACH50 1.5, and HPWH UEF 3.5 — every combination re-runs EnergyPlus. No added
+            percentage.
+          </p>
+          <div className="row">
+            <button type="button" disabled={busy} onClick={() => void proposePackages()}>
+              Propose packages and re-run the model
+            </button>
+          </div>
+          {packages.map((row) => (
+            <div key={row.id} style={{ marginTop: 16 }}>
+              <p>
+                {row.name}: <span className={`status ${row.status}`}>{row.status}</span>
+              </p>
+              <div className="grid">
+                <div className="metric">
+                  Electricity delta
+                  <b>{formatDelta(row.electricity_kwh_delta, "kWh")}</b>
+                </div>
+                <div className="metric">
+                  Gas delta
+                  <b>{formatDelta(row.natural_gas_therm_delta, "therm")}</b>
+                </div>
+                <div className="metric">
+                  Total delta
+                  <b>{formatDelta(row.total_mbtu_delta, "MBtu")}</b>
+                </div>
+              </div>
+              <p className="fine">{row.notes}</p>
+            </div>
+          ))}
         </div>
       )}
     </main>

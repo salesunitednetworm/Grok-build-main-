@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -134,3 +134,71 @@ class EngineStatus(BaseModel):
     available: bool
     reason: str | None
     regulatory: list[str]
+
+
+class UtilityPeriodIn(BaseModel):
+    start_date: date
+    end_date: date
+    fuel: str
+    usage: float = Field(ge=0)
+    unit: str
+    read_type: str = "actual"
+    atypical: bool = False
+
+
+class UtilityHistoryIn(BaseModel):
+    periods: list[UtilityPeriodIn]
+    as_of: date | None = None
+
+
+class UtilityHistoryOut(BaseModel):
+    id: str
+    home_id: str
+    as_of: str
+    periods: list[dict[str, Any]]
+    quality: dict[str, Any]
+    created_at: datetime
+
+
+class CalibrationRequest(BaseModel):
+    apply_permitted_adjustments: bool = False
+
+
+class CalibrationOut(BaseModel):
+    id: str
+    home_id: str
+    utility_history_id: str
+    baseline_job_id: str | None
+    adjusted_model_id: str | None
+    adjusted_job_id: str | None
+    model_label: str
+    qualification: str
+    run_status: str
+    compliance_claim: str
+    residuals: list[dict[str, Any]]
+    proposed_adjustments: list[dict[str, Any]]
+    applied_adjustments: list[dict[str, Any]]
+    gaps: list[str]
+    notes: str
+    created_at: datetime
+    adjusted_job: JobOut | None = None
+
+
+class PackageOut(BaseModel):
+    id: str
+    home_id: str
+    name: str
+    measures: list[str]
+    measure_payload: dict[str, Any]
+    baseline_model_id: str
+    upgraded_model_id: str
+    baseline_job_id: str
+    upgrade_job_id: str
+    status: str
+    electricity_kwh_delta: float | None
+    natural_gas_therm_delta: float | None
+    total_mbtu_delta: float | None
+    notes: str | None
+    created_at: datetime
+    baseline_job: JobOut | None = None
+    upgrade_job: JobOut | None = None

@@ -25,6 +25,10 @@ homes 1───* building_models 1───* hpxml_documents
                          │                      │
                          ├── baseline_model     ├── baseline_job
                          └── upgraded_model     └── upgrade_job
+
+homes 1───1 utility_histories
+homes 1───* calibration_runs
+homes 1───* package_proposals
 ```
 
 ## Tables
@@ -161,6 +165,44 @@ v1 applies **one** measure. The upgraded payload equals the baseline except that
 
 There is **no** `savings_percent` column in v1. BPI-2400 §4.3 equivalent-energy percent is a later, regulated calculation and must not be faked.
 
+### `utility_histories`
+
+One current bill set per home (replaced on save).
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | UUID PK | |
+| `home_id` | UUID FK UNIQUE | |
+| `as_of` | TEXT | ISO date used for the “recent read” gate |
+| `periods` | JSONB | `{start_date, end_date, fuel, usage, unit, read_type, atypical}` |
+| `quality` | JSONB | Gate result + gaps; never a compliance certificate |
+| `created_at` | TIMESTAMPTZ | |
+
+### `calibration_runs`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | UUID PK | |
+| `home_id` / `utility_history_id` | UUID FK | |
+| `baseline_job_id` | UUID NULL | Job whose annual totals were compared |
+| `adjusted_model_id` / `adjusted_job_id` | UUID NULL | Only if permitted adjustments were applied and re-run |
+| `model_label` | TEXT | `uncalibrated` \| `calibrated` |
+| `qualification` | TEXT | `none` \| `preliminary_not_certified` |
+| `run_status` | TEXT | never `bpi_2400_calibrated` |
+| `compliance_claim` | TEXT | always `not_bpi_2400_calibrated` |
+| `residuals` / `proposed_adjustments` / `applied_adjustments` / `gaps` | JSONB | |
+| `notes` | TEXT | |
+
+### `package_proposals`
+
+Seven attic / air-sealing / HPWH combinations. Each row points at a real upgrade job.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `measures` | JSONB | subset of `attic`, `air_sealing`, `hpwh` |
+| `electricity_kwh_delta` etc. | DOUBLE PRECISION NULL | NULL unless both jobs parsed EnergyPlus output |
+| `notes` | TEXT | states that no percentage was added |
+
 ## Canonical `payload` (v1)
 
 JSONB, validated by Pydantic before write.
@@ -232,8 +274,8 @@ JSONB, validated by Pydantic before write.
 
 | Future table | Why not now |
 | --- | --- |
-| `utility_bills` / Green Button usage | Parser comes after the physics slice |
-| `calibrations` / BPI-2400 acceptance | Standard not implemented; OS-HPXML-Calibration is incomplete |
+| Green Button Connect My Data | Port only; Download My Data parser is later |
+| BPI-2400 acceptance / G14 CVRMSE | Scaffolding is not acceptance; G14 is paid |
 | `doe_test_runs` | HOMES verification is a later program milestone |
 | `tenants` / `users` | Single-operator v1 |
 | `crm_external_refs` | Ports only |

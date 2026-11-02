@@ -1,11 +1,14 @@
 import type {
   BuildingModel,
   BuildingPayload,
+  CalibrationRun,
   EngineStatus,
   Home,
   HpxmlDoc,
   Job,
+  PackageProposal,
   Scenario,
+  UtilityHistory,
 } from "./types";
 
 const prefix = "";
@@ -16,17 +19,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
     cache: "no-store",
   });
+  const raw = await response.text();
   if (!response.ok) {
     let detail = response.statusText;
     try {
-      const body = await response.json();
+      const body = JSON.parse(raw);
       detail = body.detail || JSON.stringify(body);
     } catch {
-      detail = await response.text();
+      detail = raw || detail;
     }
     throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
   }
-  return response.json() as Promise<T>;
+  return (raw ? JSON.parse(raw) : null) as T;
 }
 
 export const api = {
@@ -56,4 +60,19 @@ export const api = {
       }),
     }),
   scenarios: (id: string) => request<Scenario[]>(`/api/v1/homes/${id}/scenarios`),
+  saveBills: (id: string, body: { as_of: string; periods: unknown[] }) =>
+    request<UtilityHistory>(`/api/v1/homes/${id}/utility-history`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  getBills: (id: string) => request<UtilityHistory>(`/api/v1/homes/${id}/utility-history`),
+  calibrate: (id: string, apply: boolean) =>
+    request<CalibrationRun>(`/api/v1/homes/${id}/calibration`, {
+      method: "POST",
+      body: JSON.stringify({ apply_permitted_adjustments: apply }),
+    }),
+  getCalibration: (id: string) => request<CalibrationRun>(`/api/v1/homes/${id}/calibration`),
+  createPackages: (id: string) =>
+    request<PackageProposal[]>(`/api/v1/homes/${id}/packages`, { method: "POST" }),
+  packages: (id: string) => request<PackageProposal[]>(`/api/v1/homes/${id}/packages`),
 };

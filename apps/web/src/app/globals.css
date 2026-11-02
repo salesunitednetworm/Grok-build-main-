@@ -156,6 +156,8 @@ button:disabled {
   background: transparent;
   color: var(--muted);
   border-color: var(--line);
+  font-size: 0.82rem;
+  padding: 6px 10px;
 }
 
 .steps button.active {
@@ -173,14 +175,22 @@ button:disabled {
 
 .status.valid,
 .status.succeeded,
-.status.complete {
+.status.complete,
+.status.calibrated {
   color: var(--ok);
 }
 
 .status.unavailable,
 .status.draft,
-.status.pending {
+.status.pending,
+.status.uncalibrated {
   color: var(--warn);
+}
+
+textarea.xml {
+  width: 100%;
+  min-height: 240px;
+  white-space: pre;
 }
 
 .status.invalid,

@@ -9,7 +9,7 @@ HPXML_NS = "http://hpxmlonline.com/2025/12"
 HPXML_SCHEMA_VERSION = "5.0"
 HPXML_SCHEMA_LABEL = "5.0-rc1"
 SOFTWARE_NAME = "Grok Build Home Energy"
-SOFTWARE_VERSION = "0.1.0"
+SOFTWARE_VERSION = "0.2.0"
 
 ET.register_namespace("", HPXML_NS)
 
@@ -448,6 +448,15 @@ def inspect_hpxml(xml_text: str) -> list[dict[str, str]]:
         errors.append({"code": "missing", "field": "systems.hvac", "message": "heating and cooling are required"})
     if "<WaterHeatingSystem>" not in xml_text:
         errors.append({"code": "missing", "field": "systems.dhw", "message": "water heating is required"})
+    if "<StateCode>" in xml_text and "<ZipCode>" in xml_text:
+        if xml_text.index("<StateCode>") > xml_text.index("<ZipCode>"):
+            errors.append(
+                {
+                    "code": "address_order",
+                    "field": "Address",
+                    "message": "XSD requires StateCode before ZipCode",
+                }
+            )
     return errors
 
 

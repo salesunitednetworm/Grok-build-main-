@@ -9,9 +9,9 @@ Validation is layered. Passing a layer never implies DOE, BPI, ACCA, or RESNET a
 2. HPXML structural emit      (always, after generate)
 3. HPXML XSD + EP Schematron  (when OpenStudio-HPXML tree is installed)
 4. EnergyPlus / OS-HPXML run  (when CLI is installed)
-5. BPI-2400 constraints       (not in this slice)
-6. BPI-2400 calibration       (not in this slice)
-7. DOE HOMES software tests   (not in this slice; product-level)
+5. BPI-2400 constraints       (not implemented; table not copied)
+6. BPI-2400 calibration       (scaffolding only — preliminary / not certified)
+7. DOE HOMES software tests   (not in this product; no invented ASHRAE 140 pass/fail)
 ```
 
 A home can be **valid for HPXML generation** and still **unsimulated**. That is expected on hosts without OpenStudio.
@@ -42,7 +42,7 @@ Run on every save and before generate. Failures set `building_models.status = in
 
 We **do not copy** BPI-2400 Table 3.4 numeric limits into docs or code as if we own them. When the constraint engine is built, implement from the official PDF and cite the section, without republishing the table.
 
-`data_source = measured` fields are accepted in v1 but not yet locked against calibration edits (there is no calibrator).
+`data_source = measured` fields are accepted and **locked against calibration edits**. The scaffolding will not adjust measured ACH50 or labeled AFUE / SEER2 / UEF. Setpoints that are not `measured` are the only auto-applied permitted adjustments.
 
 ## Layer 2 — HPXML emit checks
 
@@ -92,7 +92,52 @@ A missing engine is **`unavailable`**, not `failed`. Failed is reserved for a pr
 - Home Energy Score
 - HERS index
 
-## Layers 5–7 — later, required for a HOMES product
+## Layer 5 — BPI-2400 §3.4 constraints
+
+**Not implemented.** The official table is copyrighted. We do not copy it into code or UI as if we own it. Domain ranges in Layer 1 are physical sanity bounds, not a claim that §3.4 is enforced.
+
+## Layer 6 — Calibration scaffolding (preliminary / not certified)
+
+Utility history is accepted and annualized. Residuals are **simulated annual fuel − annualized bills**. Models are labeled **`uncalibrated`** or **`calibrated`**. A `calibrated` label is always qualified **`preliminary_not_certified`**. The stored compliance claim is always `not_bpi_2400_calibrated`. There is no `bpi_2400_calibrated` status.
+
+Implemented from the research notes (not a paste of the standard):
+
+- Heating/cooling fuels: span ≥330 days and a read within the past year. Up to two atypical periods may be dropped.
+- Permitted adjustments: heating/cooling setpoints when `data_source ≠ measured`. One-step ±1 °F heuristic only.
+- Forbidden: measured leakage, labeled / nameplate AFUE, SEER2, UEF, and any field not on that permitted list.
+
+Explicit gaps (returned on every run):
+
+| Gap | Why |
+| --- | --- |
+| ASHRAE Guideline 14 CVRMSE / change-point regression | G14 is paid; we do not invent pass/fail |
+| 183-day + HDD/CDD coverage path | Documented alternate; not implemented |
+| Estimated-read roll-up | Counted, not rolled into the next actual |
+| Delivered-fuel §3.3.1 path | Oil / LP / pellets not calibrated |
+| Actual-weather bill-period simulation and TMY weather-normalization | Not implemented |
+| §3.4 constraint table | Copyrighted; not copied |
+| Equivalent-energy kWhe (4.3.1.i) | PDF typesetting of the fossil term was degraded; do not invent a percent |
+| Systematic / GA search (§3.2.1) | Not implemented |
+| OS-HPXML-Calibration helper bands (5% / 500 kWh / 5 MBtu) | Informational labels only |
+
+This layer is **process scaffolding**, not software approval.
+
+## Verification harness (`apps/api/tests/verification/`)
+
+Reproducible checks with versioned JSON under `tests/verification/artifacts/`:
+
+- HPXML emit + official 1.12.0 XSD (`xmllint`) when the tree is installed
+- Baseline/post identity except ECM fields
+- Fuel-specific totals from committed EnergyPlus fixtures (and live `base.xml` when the CLI is present)
+- Official OS-HPXML samples `base.xml` and `base-dhw-tank-heat-pump.xml`
+
+The harness records `ashrae_140_verdict: null`. It does **not** invent ASHRAE 140 Class II / RESNET HVAC / DSE pass/fail.
+
+## Package optimizer
+
+Attic R-49, air sealing to ACH50 1.5, and HPWH (type `heat pump water heater`, UEF 3.5) are combined into seven packages. Each package clones the payload, changes only those ECM fields, and **re-runs EnergyPlus**. Deltas are absolute kWh / therm / MBtu from two parsed jobs. No added percentage.
+
+## Layers 7 — later, required for a HOMES product
 
 From `docs/research/doe-verification-requirements.md` and `docs/research/hpxml-and-bpi-2400.md`, a modeled 50121 tool still needs:
 

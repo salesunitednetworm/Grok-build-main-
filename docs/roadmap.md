@@ -22,6 +22,17 @@ Pins **unchanged**: OpenStudio **3.11.0** (`241b8abb4d`), OpenStudio-HPXML **v1.
 - Optional Compose `--profile simulator` builds `nrel/openstudio:3.11.0` + OS-HPXML 1.12.0 (`--scale worker=0` to replace the lite worker).
 - Live default home + attic R-49 runs persist parsed annual kWh/therm. Still not DOE/BPI/ACCA approved.
 
+## Now also — calibration scaffolding, verification harness, first optimizer (this milestone)
+
+Still **not** BPI-2400 qualified. Still **not** an ASHRAE 140 certificate.
+
+- Accept utility history; annualize; 330-day quality gate. Residuals = simulated annual fuel − bills.
+- Apply only documented permitted adjustments (unmeasured setpoints). Never touch measured ACH50 or labeled AFUE/SEER2/UEF.
+- Label models `uncalibrated` vs `calibrated` with `qualification = preliminary_not_certified`. Compliance claim is always `not_bpi_2400_calibrated`.
+- Cite gaps on every run: no G14 CVRMSE, no 183-day HDD/CDD path, no delivered-fuel path, no kWhe %, no §3.4 table copy.
+- Reproducible harness under `apps/api/tests/verification/` (HPXML emit + XSD, baseline/post ECM-only, fuel totals, official OS-HPXML `base.xml` / HPWH samples). Versioned artifacts. `ashrae_140_verdict` stays null.
+- First optimizer: attic R-49 + air sealing ACH50 1.5 + HPWH UEF 3.5, all seven combinations, each **re-runs EnergyPlus**. Absolute deltas only.
+
 ## Next — weather UX and validation translation
 
 - ZIP → TMY3 station mapping using OS-HPXML’s `zipcode_weather_stations.csv` beyond the default Denver station
@@ -38,14 +49,17 @@ Pins **unchanged**: OpenStudio **3.11.0** (`241b8abb4d`), OpenStudio-HPXML **v1.
 - Stochastic occupancy as an explicit opt-in
 - Photo attachments via `JobPhotoPort` + `PreSiteProFileAdapter` (no PreSite repo clone)
 
-## Then — bills and BPI-2400 process (still not “approved”)
+## Then — remaining BPI-2400 process (still not “approved”)
+
+Scaffolding above is not this list:
 
 - Green Button **Download My Data** parser (`UtilityUsagePort`)
-- Bill-quality gate (330-day / 183-day rules) — implement from BPI-2400, do not paste the standard
-- §3.4 constraint engine + override warnings
+- 183-day + HDD/CDD path; estimated-read roll-up; delivered-fuel §3.3.1
+- ASHRAE Guideline 14 regression / CVRMSE (requires the paid standard)
+- §3.4 constraint engine + override warnings (implement from the official PDF; do not paste the table)
 - Operational vs asset model variants
-- Equivalent-energy reporting from the official equation (read the PDF)
-- Evaluate OpenStudio-HPXML-Calibration as a helper, not a complete implementation
+- Equivalent-energy reporting from the official equation (read the PDF; do not invent kWhe %)
+- Systematic / GA search; evaluate OpenStudio-HPXML-Calibration as a helper, not a complete implementation
 
 Connect My Data stays per-utility onboarding. AHRI in-app ratings stay blocked until a Data Subscription.
 
@@ -92,3 +106,4 @@ Do not scrape AHRI, NEEP bulk lists, MAEDbS, or utility portals.
 - Architecture files exist in the store and in the repo `docs/` tree
 - A PR from a **new** `main` branch contains a runnable slice + tests + changelog
 - A reviewer can create a home, see valid HPXML, and see either real EnergyPlus numbers or a clear unavailable state — never a made-up kWh
+- Utility history, residual scaffolding, and package re-runs are on the same PR #3 branch, labeled preliminary / not certified
