@@ -194,8 +194,14 @@ textarea.xml {
 }
 
 .status.invalid,
-.status.failed {
+.status.failed,
+.status.ineligible {
   color: var(--fail);
+}
+
+.status.incomplete,
+.status.screen_passed_not_submittable {
+  color: var(--warn);
 }
 
 .xml {

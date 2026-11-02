@@ -1,0 +1,189 @@
+{
+  "pack_id": "ga-her-2026-11-02",
+  "pack_version": "2026.11.02",
+  "state_code": "GA",
+  "program": "homes",
+  "statute": "IRA §50121",
+  "public_name": "Home Efficiency Rebates (HER)",
+  "authority": "state",
+  "published_date": "2026-11-02",
+  "effective_from": "2024-11-13",
+  "effective_to": null,
+  "this_product_doe_approved": false,
+  "named_modeling_software": "SnuggPro",
+  "named_modeling_software_status": "gefa_required_doe_letter_not_retrieved",
+  "pathway": "modeled",
+  "sources": [
+    {
+      "title": "Georgia HER page incentive table",
+      "url": "https://energyrebates.georgia.gov/home-efficiency-rebates",
+      "retrieved": "2026-11-02",
+      "status": "retrieved"
+    },
+    {
+      "title": "Georgia eligibility",
+      "url": "https://energyrebates.georgia.gov/eligibility",
+      "retrieved": "2026-11-02",
+      "status": "retrieved"
+    },
+    {
+      "title": "GEFA HER Consumer Protection Plan (50121)",
+      "url": "https://energyrebates.georgia.gov/document/document/her-consumer-protection-plan/download",
+      "retrieved": "2026-11-02",
+      "status": "retrieved",
+      "note": "SnuggPro, Manual J/S/D, Neighborly, blower door, CAZ, BPI Analyst."
+    },
+    {
+      "title": "DOE bulletin announcing GA launch",
+      "url": "https://content.govdelivery.com/accounts/USDOESCEP/bulletins/3c19e45",
+      "retrieved": "2026-11-02",
+      "status": "retrieved",
+      "note": "November 13, 2024"
+    }
+  ],
+  "unverified": [
+    "Whether DOE has separately listed Georgia's SnuggPro configuration on a public approval letter. Snugg Pro is on national BPI/NASEO HOMES tool lists.",
+    "Whether Georgia dropped geotagged photos after Notice 26-1.",
+    "County-level HUD AMI dollar limits are not copied here; AMI band is user-declared."
+  ],
+  "income": {
+    "eligible_bands": ["below_80", "80_to_150", "above_150"],
+    "ineligible_bands": [],
+    "note": "HER has no income ceiling. Rebate amount still depends on AMI band. Matches federal HOMES; differs from NC.",
+    "ami_lookup": "not_implemented_user_declared"
+  },
+  "property": {
+    "existing_homes_only": true,
+    "new_construction": false,
+    "occupancy": ["owner", "renter_with_landlord_authorization"],
+    "dwelling_types": ["single-family", "multifamily"],
+    "diy": false,
+    "geography": "Georgia; primary-home / Georgia residency rules on the eligibility page",
+    "registered_contractor_required": true,
+    "minimum_contractor_credential": "BPI Analyst"
+  },
+  "measures": {
+    "must_be_in_named_model": true,
+    "named_model": "SnuggPro",
+    "allowed": ["attic_insulation", "air_sealing", "insulation", "ventilation", "heat_pump", "heat_pump_water_heater", "duct_leakage", "other_modeled"],
+    "assessment_payload": "HPXML",
+    "note": "Home assessment data delivered as HPXML. This product authors HPXML v5.0-rc1 for EnergyPlus, which is not a Georgia HER submittal."
+  },
+  "fuel_restrictions": {
+    "caz_test_if_gas_appliances_water_heater_or_hvac": true,
+    "source": "GEFA HER Consumer Protection Plan"
+  },
+  "envelope_prerequisites": {
+    "blower_door_pre_and_post_if_envelope": true,
+    "source": "GEFA HER Consumer Protection Plan",
+    "note": "Envelope projects: pre- and post-blower door. No numeric ACH50 pass/fail is copied from the plan."
+  },
+  "modeled_savings": {
+    "required": true,
+    "minimum_percent": 20,
+    "higher_tier_percent": 35,
+    "method_required_by_program": "bpi_2400_equivalent_energy",
+    "this_product_method": "preliminary_site_energy_from_stored_energyplus_totals",
+    "this_product_method_qualifies_rebate": false,
+    "measured_path": "only_if_gefa_later_runs_a_pilot",
+    "note": "Majority of work modeled. This product is not DOE-approved and cannot produce a HER rebate percentage."
+  },
+  "hvac_mini_assessment": {
+    "manual_j": true,
+    "manual_s": true,
+    "manual_d_if_ducts": true,
+    "note": "This product's design loads remain preliminary and are not ACCA-approved."
+  },
+  "rebate_limits": [
+    {
+      "savings_band": "20_to_34",
+      "ami_band": "below_80",
+      "cost_share_percent": 98,
+      "max_usd": 10000,
+      "dwelling": "single-family"
+    },
+    {
+      "savings_band": "35_or_greater",
+      "ami_band": "below_80",
+      "cost_share_percent": 98,
+      "max_usd": 16000,
+      "dwelling": "single-family"
+    },
+    {
+      "savings_band": "20_to_34",
+      "ami_band": "80_to_150",
+      "cost_share_percent": 50,
+      "max_usd": 2000,
+      "dwelling": "single-family"
+    },
+    {
+      "savings_band": "20_to_34",
+      "ami_band": "above_150",
+      "cost_share_percent": 50,
+      "max_usd": 2000,
+      "dwelling": "single-family"
+    },
+    {
+      "savings_band": "35_or_greater",
+      "ami_band": "80_to_150",
+      "cost_share_percent": 50,
+      "max_usd": 4000,
+      "dwelling": "single-family"
+    },
+    {
+      "savings_band": "35_or_greater",
+      "ami_band": "above_150",
+      "cost_share_percent": 50,
+      "max_usd": 4000,
+      "dwelling": "single-family"
+    }
+  ],
+  "required_docs": [
+    "id_residency_ownership_or_landlord_authorization",
+    "income_docs_for_income_based_rebate_amount",
+    "contractor_energy_audit_snuggpro",
+    "hpxml_assessment",
+    "scope_of_work",
+    "manual_jsd_if_hvac",
+    "blower_door_pre_post_if_envelope",
+    "post_install_certificate",
+    "neighborly_application"
+  ],
+  "categorical_eligibility": [
+    "LIHEAP",
+    "Medicaid",
+    "SNAP",
+    "Head Start",
+    "WIC",
+    "Lifeline",
+    "NSLP-Free",
+    "HIP",
+    "HOPWA",
+    "SSI",
+    "WAP",
+    "ALICE"
+  ],
+  "reservation_workflow": {
+    "portal": "Neighborly (energyrebates.georgia.gov)",
+    "this_product_submits": false,
+    "implementer": "Guidehouse",
+    "steps": [
+      "Program website",
+      "Approved contractor",
+      "Evaluation",
+      "Scope of work",
+      "Contractor enters project in Neighborly; invites household",
+      "Household creates participant profile",
+      "Completes application",
+      "Program review",
+      "Decision",
+      "Install",
+      "Contractor submits proof of installation",
+      "Household pays net of rebate"
+    ]
+  },
+  "stacking": {
+    "same_measure_homes_and_hear": false,
+    "ga_hear_currently_wiring_panel_with_her_only": true
+  }
+}

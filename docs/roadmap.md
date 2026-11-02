@@ -43,6 +43,15 @@ Still **not** BPI-2400 qualified. Still **not** an ASHRAE 140 certificate.
 
 Still **not** DOE / BPI / ACCA approved.
 
+## Now also — NC / GA HOMES/HEAR program screens (this milestone)
+
+Stacked on the energy-platform slice. Still **not** DOE-approved. Still **not** a portal.
+
+- Versioned rule packs for NC HOMES, NC HEAR, GA HER, and current GA HEAR (wiring/panel with HER only), each citing retrieved published sources and listing unverified items.
+- Evaluations pin the pack version. Rule changes flag existing rows; they are not silently rewritten.
+- Screens use stored EnergyPlus totals when a succeeded pair exists. Missing results stay `not_evaluable`. No invented kWh or BPI-2400 kWhe %.
+- Never claims Neighborly / Energy Saver NC / PNNL submission, reservation, approval, or payment. Never edits the building model to force qualification.
+
 ## Then — remaining single-family audit model
 
 - Dual-fuel heat pumps as a first-class measure
@@ -111,3 +120,4 @@ Do not scrape AHRI, NEEP bulk lists, MAEDbS, or utility portals.
 - Utility history, residual scaffolding, and package re-runs are on the same PR #3 branch, labeled preliminary / not certified
 - ZIP maps to an official TMY3 (fallback labeled when the official EPW is not shipped); software defaults and `run.log` warnings appear next to results; XSD/Schematron errors map onto form fields
 - Heat-pump (HSPF2/SEER2) and measured duct-leakage (CFM25) scenarios re-run EnergyPlus and persist parsed kWh — still not DOE / BPI / ACCA
+- NC/GA program screens exist as versioned packs on a stacked PR; they do not submit rebates and do not claim DOE approval

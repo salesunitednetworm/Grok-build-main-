@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 — 2026-11-02
+
+- NC and Georgia HOMES/HEAR (HER) **program screens** from published state/federal sources. Versioned rule packs pin `pack_id` / `pack_version` on each evaluation. A newer pack flags `rule_pack_changed` and does not rewrite prior rows.
+- Household income/AMI band (user-declared), property/measure eligibility, fuel/QEP timing, envelope document flags, documented modeled 20%/35% thresholds, rebate caps, required-doc checklists, and reservation **workflow text** (never executed).
+- HOMES savings screens use **stored EnergyPlus totals only**. No invented kWh or BPI-2400 equivalent-energy percent. This product is labeled **not DOE-approved** and never claims portal submission, reservation, approval, or payment.
+- Does not manipulate building-model inputs to force a screen.
+
 ## 0.3.0 — 2026-11-02
 
 - ZIP → TMY3 from official OS-HPXML `zipcode_weather_stations.csv`. Official station is always stored. Missing official EPWs use the nearest shipped TMY3 and are labeled `nearest_shipped` (80202 official is Broomfield; shipped fallback is Denver Intl). 33101 maps to Miami TMY3.

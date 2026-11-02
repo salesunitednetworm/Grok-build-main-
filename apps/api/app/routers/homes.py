@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.domain.building import default_payload
 from app.domain.weather import lookup_zip
+from app.domain.programs import get_pack, list_pack_summaries
 from app.models import (
     BuildingModel,
     CalibrationRun,
@@ -32,6 +33,10 @@ from app.schemas import (
     HpxmlOut,
     JobOut,
     PackageOut,
+    ProgramApplicationIn,
+    ProgramApplicationOut,
+    ProgramEvaluationOut,
+    ProgramPackOut,
     ScenarioCreate,
     ScenarioOut,
     UtilityHistoryIn,
@@ -421,6 +426,89 @@ def create_packages(home_id: str, db: Session = Depends(get_db)) -> list[Package
 def list_packages(home_id: str, db: Session = Depends(get_db)) -> list[PackageOut]:
     _home(db, home_id)
     return [_package_out(db, row) for row in services.latest_packages(db, home_id)]
+
+
+@router.get("/programs", response_model=list[ProgramPackOut])
+def list_programs() -> list[ProgramPackOut]:
+    return [ProgramPackOut.model_validate(item) for item in list_pack_summaries()]
+
+
+@router.get("/programs/{pack_id}")
+def get_program_pack(pack_id: str) -> dict:
+    try:
+        return get_pack(pack_id)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+def _evaluation_out(row) -> ProgramEvaluationOut:
+    result = services.evaluation_to_result(row)
+    return ProgramEvaluationOut(
+        id=row.id,
+        home_id=row.home_id,
+        application_id=row.application_id,
+        pack_id=row.pack_id,
+        pack_version=row.pack_version,
+        state_code=row.state_code,
+        program=row.program,
+        public_name=result.public_name,
+        overall_status=row.overall_status,
+        compliance_claim=row.compliance_claim,
+        portal_status=row.portal_status,
+        reservation_status=row.reservation_status,
+        payment_status=row.payment_status,
+        this_product_doe_approved=False,
+        named_modeling_software=result.named_modeling_software,
+        savings_percent=row.savings_percent,
+        savings_method=row.savings_method,
+        savings_band=row.savings_band,
+        rebate_cap_usd=row.rebate_cap_usd,
+        cost_share_percent=row.cost_share_percent,
+        product_caps_usd=result.product_caps_usd,
+        checks=[item.model_dump() for item in result.checks],
+        sources=[item.model_dump() for item in result.sources],
+        unverified=result.unverified,
+        reservation_workflow=result.reservation_workflow,
+        notes=result.notes,
+        current_pack_id=result.current_pack_id,
+        current_pack_version=result.current_pack_version,
+        rule_pack_changed=result.rule_pack_changed,
+        baseline_job_id=row.baseline_job_id,
+        upgrade_job_id=row.upgrade_job_id,
+        scenario_id=row.scenario_id,
+        package_id=row.package_id,
+        created_at=row.created_at,
+    )
+
+
+@router.put("/homes/{home_id}/program-application", response_model=ProgramApplicationOut)
+def put_program_application(
+    home_id: str, body: ProgramApplicationIn, db: Session = Depends(get_db)
+) -> ProgramApplicationOut:
+    home = _home(db, home_id)
+    try:
+        record = services.save_program_application(db, home, body.model_dump())
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return ProgramApplicationOut.model_validate(record)
+
+
+@router.post("/homes/{home_id}/program-evaluations", response_model=ProgramEvaluationOut)
+def post_program_evaluation(
+    home_id: str, body: ProgramApplicationIn, db: Session = Depends(get_db)
+) -> ProgramEvaluationOut:
+    home = _home(db, home_id)
+    try:
+        row = services.create_program_evaluation(db, home, body.model_dump())
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return _evaluation_out(row)
+
+
+@router.get("/homes/{home_id}/program-evaluations", response_model=list[ProgramEvaluationOut])
+def get_program_evaluations(home_id: str, db: Session = Depends(get_db)) -> list[ProgramEvaluationOut]:
+    _home(db, home_id)
+    return [_evaluation_out(row) for row in services.list_program_evaluations(db, home_id)]
 
 
 @router.get("/homes/{home_id}/hpxml.xml")

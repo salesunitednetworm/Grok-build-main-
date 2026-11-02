@@ -17,6 +17,13 @@ from app.domain.building import (
 )
 from app.domain.schema_check import validate_against_schematron, validate_against_xsd, xsd_available
 from app.domain.weather import apply_weather
+from app.domain.programs import (
+    Application as ProgramApplicationPayload,
+    SavingsSnapshot,
+    evaluate as evaluate_program_rules,
+    flag_pack_change,
+    get_pack,
+)
 from app.domain.calibration import (
     apply_adjustments,
     assess_calibration,
@@ -33,6 +40,8 @@ from app.models import (
     Home,
     HpxmlDocument,
     PackageProposal,
+    ProgramApplication,
+    ProgramEvaluation,
     SimulationArtifact,
     SimulationJob,
     UpgradeScenario,
@@ -586,3 +595,164 @@ def create_packages(db: Session, home: Home) -> list[PackageProposal]:
         db.refresh(proposal)
         created.append(proposal)
     return created
+
+
+def _energy_for_job(db: Session, job_id: str | None) -> EnergyResult | None:
+    if not job_id:
+        return None
+    return db.scalars(select(EnergyResult).where(EnergyResult.job_id == job_id)).first()
+
+
+def _job_succeeded(db: Session, job_id: str | None) -> bool:
+    if not job_id:
+        return False
+    job = db.get(SimulationJob, job_id)
+    return bool(job and job.status == "succeeded")
+
+
+def program_savings_snapshot(
+    db: Session,
+    home_id: str,
+    scenario_id: str | None = None,
+    package_id: str | None = None,
+) -> tuple[SavingsSnapshot, str | None, str | None]:
+    """Read stored EnergyPlus totals only. Never invents kWh or a percentage."""
+    baseline_id = None
+    upgrade_id = None
+    used_scenario = scenario_id
+    used_package = package_id
+    if package_id:
+        proposal = db.get(PackageProposal, package_id)
+        if proposal is None or proposal.home_id != home_id:
+            raise ValueError("package not found for this home")
+        baseline_id, upgrade_id = proposal.baseline_job_id, proposal.upgrade_job_id
+    elif scenario_id:
+        scenario = db.get(UpgradeScenario, scenario_id)
+        if scenario is None or scenario.home_id != home_id:
+            raise ValueError("scenario not found for this home")
+        comparison = db.scalars(select(Comparison).where(Comparison.scenario_id == scenario_id)).first()
+        if comparison:
+            baseline_id, upgrade_id = comparison.baseline_job_id, comparison.upgrade_job_id
+    else:
+        scenario = db.scalars(
+            select(UpgradeScenario)
+            .where(UpgradeScenario.home_id == home_id)
+            .order_by(UpgradeScenario.created_at.desc())
+        ).first()
+        if scenario:
+            comparison = db.scalars(select(Comparison).where(Comparison.scenario_id == scenario.id)).first()
+            if comparison:
+                used_scenario = scenario.id
+                baseline_id, upgrade_id = comparison.baseline_job_id, comparison.upgrade_job_id
+        if baseline_id is None:
+            proposal = db.scalars(
+                select(PackageProposal)
+                .where(PackageProposal.home_id == home_id)
+                .order_by(PackageProposal.created_at.desc())
+            ).first()
+            if proposal:
+                used_package = proposal.id
+                baseline_id, upgrade_id = proposal.baseline_job_id, proposal.upgrade_job_id
+    baseline_energy = _energy_for_job(db, baseline_id)
+    upgrade_energy = _energy_for_job(db, upgrade_id)
+    snapshot = SavingsSnapshot(
+        baseline_job_id=baseline_id,
+        upgrade_job_id=upgrade_id,
+        baseline_total_mbtu=None if baseline_energy is None else baseline_energy.total_mbtu,
+        upgrade_total_mbtu=None if upgrade_energy is None else upgrade_energy.total_mbtu,
+        baseline_electricity_kwh=None if baseline_energy is None else baseline_energy.electricity_kwh,
+        upgrade_electricity_kwh=None if upgrade_energy is None else upgrade_energy.electricity_kwh,
+        both_jobs_succeeded=_job_succeeded(db, baseline_id) and _job_succeeded(db, upgrade_id) and baseline_energy is not None and upgrade_energy is not None,
+    )
+    return snapshot, used_scenario, used_package
+
+
+def save_program_application(db: Session, home: Home, payload: dict) -> ProgramApplication:
+    pack_id = payload.get("pack_id")
+    if not pack_id:
+        raise ValueError("pack_id is required")
+    get_pack(pack_id)
+    existing = db.scalars(
+        select(ProgramApplication).where(
+            ProgramApplication.home_id == home.id, ProgramApplication.pack_id == pack_id
+        )
+    ).first()
+    if existing:
+        existing.payload = payload
+        db.commit()
+        db.refresh(existing)
+        return existing
+    record = ProgramApplication(home_id=home.id, pack_id=pack_id, payload=payload)
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+def latest_homes_evaluation_status(db: Session, home_id: str) -> str:
+    row = db.scalars(
+        select(ProgramEvaluation)
+        .where(ProgramEvaluation.home_id == home_id, ProgramEvaluation.program == "homes")
+        .order_by(ProgramEvaluation.created_at.desc())
+    ).first()
+    return row.overall_status if row else "none"
+
+
+def create_program_evaluation(db: Session, home: Home, payload: dict) -> ProgramEvaluation:
+    application = save_program_application(db, home, payload)
+    pack = get_pack(application.pack_id)
+    data = dict(application.payload)
+    if pack.get("program") == "hear" and pack.get("measures", {}).get("must_pair_with_homes"):
+        if data.get("paired_homes_screen") in {None, "none"}:
+            data["paired_homes_screen"] = latest_homes_evaluation_status(db, home.id)
+    app = ProgramApplicationPayload.model_validate({k: v for k, v in data.items() if k in ProgramApplicationPayload.model_fields})
+    snapshot, scenario_id, package_id = program_savings_snapshot(
+        db, home.id, scenario_id=payload.get("scenario_id"), package_id=payload.get("package_id")
+    )
+    # Never write back onto the building model.
+    result = evaluate_program_rules(app, snapshot, pack)
+    row = ProgramEvaluation(
+        home_id=home.id,
+        application_id=application.id,
+        pack_id=result.pack_id,
+        pack_version=result.pack_version,
+        state_code=result.state_code,
+        program=result.program,
+        overall_status=result.overall_status,
+        compliance_claim=result.compliance_claim,
+        portal_status=result.portal_status,
+        reservation_status=result.reservation_status,
+        payment_status=result.payment_status,
+        savings_percent=result.savings_percent,
+        savings_method=result.savings_method,
+        savings_band=result.savings_band,
+        rebate_cap_usd=result.rebate_cap_usd,
+        cost_share_percent=result.cost_share_percent,
+        baseline_job_id=snapshot.baseline_job_id,
+        upgrade_job_id=snapshot.upgrade_job_id,
+        scenario_id=scenario_id,
+        package_id=package_id,
+        result=result.model_dump(mode="json"),
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def list_program_evaluations(db: Session, home_id: str) -> list[ProgramEvaluation]:
+    return list(
+        db.scalars(
+            select(ProgramEvaluation)
+            .where(ProgramEvaluation.home_id == home_id)
+            .order_by(ProgramEvaluation.created_at.desc())
+        )
+    )
+
+
+def evaluation_to_result(row: ProgramEvaluation):
+    from app.domain.programs import Evaluation
+
+    result = Evaluation.model_validate(row.result)
+    return flag_pack_change(result)
+

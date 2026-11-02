@@ -174,6 +174,47 @@ export type CalibrationRun = {
   adjusted_job: Job | null;
 };
 
+export type ProgramPack = {
+  pack_id: string;
+  pack_version: string;
+  state_code: string;
+  program: string;
+  public_name: string;
+  effective_from: string | null;
+  this_product_doe_approved: boolean;
+  named_modeling_software: string | null;
+  sources: { title: string; url: string; retrieved: string; status: string }[];
+  unverified: string[];
+};
+
+export type ProgramEvaluation = {
+  id: string;
+  pack_id: string;
+  pack_version: string;
+  state_code: string;
+  program: string;
+  public_name: string;
+  overall_status: string;
+  compliance_claim: string;
+  portal_status: string;
+  reservation_status: string;
+  payment_status: string;
+  this_product_doe_approved: boolean;
+  named_modeling_software: string | null;
+  savings_percent: number | null;
+  savings_method: string | null;
+  savings_band: string | null;
+  rebate_cap_usd: number | null;
+  cost_share_percent: number | null;
+  checks: { code: string; status: string; field: string; message: string }[];
+  sources: { title: string; url: string }[];
+  unverified: string[];
+  notes: string;
+  rule_pack_changed: boolean;
+  current_pack_version: string | null;
+  created_at: string;
+};
+
 export type PackageProposal = {
   id: string;
   name: string;

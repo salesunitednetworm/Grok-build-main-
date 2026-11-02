@@ -29,6 +29,7 @@ homes 1───* building_models 1───* hpxml_documents
 homes 1───1 utility_histories
 homes 1───* calibration_runs
 homes 1───* package_proposals
+homes 1───* program_applications 1───* program_evaluations
 ```
 
 ## Tables
@@ -204,6 +205,28 @@ Seven attic / air-sealing / HPWH combinations. Each row points at a real upgrade
 | `measures` | JSONB | subset of `attic`, `air_sealing`, `hpwh` |
 | `electricity_kwh_delta` etc. | DOUBLE PRECISION NULL | NULL unless both jobs parsed EnergyPlus output |
 | `notes` | TEXT | states that no percentage was added |
+
+### `program_applications`
+
+One current application payload per home + rule pack. Does not mutate `building_models`.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `pack_id` | TEXT | e.g. `nc-homes-v2.0-2026-02` |
+| `payload` | JSONB | User-declared AMI band, measures, docs flags |
+
+### `program_evaluations`
+
+Immutable. A rule-pack change creates a **new** row; old rows keep `pack_version` and set `rule_pack_changed` on read.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `pack_id` / `pack_version` | TEXT | Pinned at evaluate time |
+| `overall_status` | TEXT | `ineligible` \| `incomplete` \| `screen_passed_not_submittable` |
+| `compliance_claim` | TEXT | always `not_doe_approved_not_submitted` |
+| `portal_status` / `reservation_status` / `payment_status` | TEXT | always `not_submitted` / `not_reserved` / `not_paid` |
+| `savings_percent` | DOUBLE PRECISION NULL | Site-energy from stored EnergyPlus totals only; NULL if no pair |
+| `result` | JSONB | Full checks, sources, unverified list |
 
 ## Canonical `payload` (v1)
 
