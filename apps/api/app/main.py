@@ -7,6 +7,7 @@ from app import __version__
 from app.config import settings
 from app.db import init_db
 from app.routers.homes import router as homes_router
+from app.routers.projects import router as projects_router
 
 
 @asynccontextmanager
@@ -33,6 +34,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(homes_router)
+app.include_router(projects_router)
 
 
 @app.get("/health")

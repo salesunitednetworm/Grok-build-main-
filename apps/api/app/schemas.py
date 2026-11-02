@@ -316,3 +316,39 @@ class ProgramEvaluationOut(BaseModel):
     package_id: str | None = None
     created_at: datetime
 
+
+class ProjectCreate(BaseModel):
+    home_id: str
+    name: str | None = None
+
+
+class StagePatch(BaseModel):
+    stage: str
+    reason: str | None = None
+
+
+class ConfirmationIn(BaseModel):
+    kind: str
+    source: str
+    reference: str
+
+
+class ProposalIn(BaseModel):
+    title: str
+    measures: list[str] = Field(default_factory=list)
+    building_model_id: str | None = None
+    program_evaluation_id: str | None = None
+    notes: str = ""
+
+
+class SignIn(BaseModel):
+    signer_name: str
+    signer_email: str
+
+
+class WorkOrderIn(BaseModel):
+    title: str
+    scope: str
+    proposal_id: str | None = None
+
+

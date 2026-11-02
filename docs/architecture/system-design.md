@@ -95,6 +95,7 @@ PreSite Pro, Zoho, HighLevel, CompanyCam, AHRI, and Green Button **Connect My Da
 8. **Display energy results** — parsed Fuel Use and End Use from `results_annual.json` only. Design loads shown as **preliminary**. Software defaults and engine warnings sit next to the numbers.
 9. **Compare upgrades** — copy the validated model, apply one measure (`attic_insulation`, `heat_pump`, or `duct_leakage`), generate a second HPXML, run a second job. Deltas exist only when **both** jobs have parsed EnergyPlus results.
 10. **Program screen (optional)** — evaluate a pinned NC/GA HOMES or HEAR rule pack against the household application and stored EnergyPlus totals. The screen never submits a reservation and never edits the building model.
+11. **Contractor job (optional)** — open a `ContractorProject` on the home. Persist one of sixteen stages. Photo checklist, proposal, and work-order rows may pin the current building model and a compliance evaluation version. Gated stages stay blocked until an operator records an external confirmation. File adapters never report Zoho, HighLevel, Dropbox Sign, or portal success.
 
 ## Simulation-unavailable path
 
@@ -128,16 +129,18 @@ docker-compose.yml
 - Artifacts are files on a configured volume (`ARTIFACT_ROOT`), referenced from PostgreSQL.
 - Production later: object storage, per-tenant isolation, auth. Not this slice.
 
-## Integration ports (build later, shape now)
+## Integration ports (ports first)
 
-Domain code talks to ports. First photo implementation, when needed, is `PreSiteProFileAdapter` (object storage + JSON sidecars) — not CompanyCam endpoints and not a clone of `pre-site-pro`.
+Domain code talks to ports. It does not import Zoho, HighLevel, CompanyCam, Dropbox Sign, or a state portal SDK.
 
 | Port | First adapter | Status |
 | --- | --- | --- |
-| `ModelProvider` | `OpenStudioHpxmlProvider` | **This slice** |
-| `JobPhotoPort` | `PreSiteProFileAdapter` | Adapter stub later |
-| `CrmPort` | none | Zoho / HighLevel when chosen |
+| `ModelProvider` | `OpenStudioHpxmlProvider` | Shipped |
+| `JobPhotoPort` | `PreSiteProFileAdapter` | File + `presitepro.photo/v1` sidecars; not a `pre-site-pro` clone |
+| `CrmPort` | `FileCrmAdapter` | `pending_vendor`; no Zoho/HighLevel call |
+| `ESignPort` | `FileESignAdapter` | `pending_vendor` until a completed PDF is ingested |
 | `UtilityUsagePort` | Green Button DMD file parse | After this slice |
+| `SchedulingPort` | none | After this slice |
 | `EquipmentCatalogPort` | ENERGY STAR SODA | AHRI remains license-blocked |
 
 ## Local development

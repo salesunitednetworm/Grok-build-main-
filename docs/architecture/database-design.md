@@ -30,6 +30,11 @@ homes 1───1 utility_histories
 homes 1───* calibration_runs
 homes 1───* package_proposals
 homes 1───* program_applications 1───* program_evaluations
+homes 1───* contractor_projects 1───* stage_events
+                              ├──* photo_sites 1───* photo_records
+                              ├──* photo_checklist_items
+                              ├──* proposal_records
+                              └──* work_orders
 ```
 
 ## Tables
@@ -228,6 +233,28 @@ Immutable. A rule-pack change creates a **new** row; old rows keep `pack_version
 | `savings_percent` | DOUBLE PRECISION NULL | Site-energy from stored EnergyPlus totals only; NULL if no pair |
 | `result` | JSONB | Full checks, sources, unverified list |
 
+### `contractor_projects`
+
+One job file per home (v1). Stage is persisted. Confirmation JSON columns start **NULL**.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `stage` | TEXT | One of the 16 job stages; default `lead` |
+| `building_model_id` / `program_evaluation_id` | UUID NULL | Latest model / evaluation when the job opens |
+| `program_evaluation_pack_version` | TEXT NULL | Pinned pack version; not rewritten on pack change |
+| `crm_ref` | JSONB NULL | File adapter `pending_vendor` ref — not a Zoho/HighLevel success |
+| `program_submission_confirmation` / `approval_confirmation` / `reservation_confirmation` / `final_submission_confirmation` / `payment_confirmation` | JSONB NULL | `{source, reference}` from an external system. Unset means the product must not claim that event |
+
+Gated stages cannot be set while the matching confirmation is NULL.
+
+### `photo_sites` / `photo_records` / `photo_checklist_items`
+
+PreSite Pro **file** sidecars (`presitepro.jobsite/v1`, `presitepro.photo/v1`). Provider is `presitepro_file`. Default checklist: exterior, attic, nameplate, electrical panel, existing HVAC, ducts, foundation.
+
+### `proposal_records` / `work_orders`
+
+Work records, not rebate awards. They copy `building_model_id` and the pinned `program_evaluation_pack_version`. E-sign `envelope_status` from the file adapter is `pending_vendor` unless a completed PDF was ingested.
+
 ## Canonical `payload` (v1)
 
 JSONB, validated by Pydantic before write.
@@ -318,7 +345,7 @@ JSONB, validated by Pydantic before write.
 | BPI-2400 acceptance / G14 CVRMSE | Scaffolding is not acceptance; G14 is paid |
 | `doe_test_runs` | HOMES verification is a later program milestone |
 | `tenants` / `users` | Single-operator v1 |
-| `crm_external_refs` | Ports only |
+| Production CRM / e-sign vendor rows | File adapters only; `crm_ref` is `pending_vendor` |
 | AHRI ratings cache | License-blocked |
 
 ## Environments
