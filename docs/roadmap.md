@@ -1,0 +1,88 @@
+# Roadmap — Home Energy Modeling Platform
+
+Built from existing research (2026-11-02). Dates are not estimates; order is dependency order.
+
+This product is **not** DOE HOMES approved, **not** BPI-2400 qualified, and **not** ACCA Manual J software. Those are later gates, not launch labels.
+
+## Now — vertical slice (this milestone)
+
+Ship in `Grok-build-main-` on a **new branch from `main`**, leaving draft PRs #1 and #2 untouched.
+
+- Create Home → building data → validate → HPXML v5.0-rc1 → queue → OpenStudio-HPXML/EnergyPlus **or** labeled `unavailable` → store artifacts → show parsed energy **or** an empty unavailable state → one attic-insulation comparison
+- Canonical model + `OpenStudioHpxmlProvider`
+- PostgreSQL schema, FastAPI, Next.js, Docker Compose
+- Tests for validation, HPXML emit, result parse, comparison-null-without-simulation, API
+- No mock kWh, no mock % savings, no Pages deploy at repo root
+
+## Next — make the engine real on developer machines
+
+- Document installing OpenStudio **3.11.0** + OpenStudio-HPXML **1.12.0** + TMY3 cache
+- Optional Compose `--profile simulator` with that pin only
+- ZIP → TMY3 station mapping using OS-HPXML’s `zipcode_weather_stations.csv`
+- Surface `in.xml` software defaults in the UI (`dataSource='software'`)
+- Translate XSD/Schematron errors onto form fields
+- Store `run.log` warnings next to results
+
+## Then — a complete single-family audit model
+
+- More enclosure: vented attics, crawlspaces, slab vs basement, rim joists as first-class fields
+- Heat pumps (HSPF2/SEER2), dual fuel, ductless
+- Duct leakage (CFM25) as a measured input
+- Appliances and lighting as collected fields, not only defaults
+- Stochastic occupancy as an explicit opt-in
+- Photo attachments via `JobPhotoPort` + `PreSiteProFileAdapter` (no PreSite repo clone)
+
+## Then — bills and BPI-2400 process (still not “approved”)
+
+- Green Button **Download My Data** parser (`UtilityUsagePort`)
+- Bill-quality gate (330-day / 183-day rules) — implement from BPI-2400, do not paste the standard
+- §3.4 constraint engine + override warnings
+- Operational vs asset model variants
+- Equivalent-energy reporting from the official equation (read the PDF)
+- Evaluate OpenStudio-HPXML-Calibration as a helper, not a complete implementation
+
+Connect My Data stays per-utility onboarding. AHRI in-app ratings stay blocked until a Data Subscription.
+
+## Then — DOE HOMES modeled-pathway package (optional business decision)
+
+Only if we want **this** product on a 50121 list:
+
+1. Purchase/read ASHRAE 140-2017 and Guideline 14; run Class II Tier 1 + RESNET HVAC + DSE with the specified TMY3 files.
+2. HPXML **v4** program export (separate from engine v5.0-rc1 input).
+3. NREL sample-home calibration using our documented method.
+4. Submit to `homes.rebates.software@nrel.gov` and wait for a determination **for this product**.
+5. Until the letter exists, marketing stays silent on HOMES approval.
+
+HEAR (50122) is a different path (measures, not BPI-2400 modeled savings). Multifamily is BuildingSync / other DOE guidance.
+
+## Contractor operations (parallel, after slice)
+
+Ports first, vendors second (`docs/research/integrations.md`):
+
+| Port | First concrete adapter |
+| --- | --- |
+| `CrmPort` | Zoho v8 **or** HighLevel v3 — pick one tenant CRM |
+| `JobPhotoPort` | PreSite Pro files; CompanyCam optional later |
+| `ESignPort` | Dropbox Sign or Acrobat Sign (DocuSign docs were unchecked) |
+| `MessagingPort` | Twilio or HighLevel; TCPA consent ledger required |
+| `EquipmentCatalogPort` | ENERGY STAR SODA; link out to AHRI certificates |
+
+Do not scrape AHRI, NEEP bulk lists, MAEDbS, or utility portals.
+
+## Explicit non-goals
+
+| Item | Reason |
+| --- | --- |
+| Merge Sales United portal into energy app root | Different product; Pages workflow would publish the repo as static HTML |
+| Clone `pre-site-pro` or `salesgrid-snapshot` | Isolated to this repo; photo port only |
+| ResStock as the home model | Stock priors ≠ field data; extra license clause |
+| EnergyPlus 26.2.0 | Wrong binary vs OpenStudio 3.11.0 |
+| White-label Snugg / OptiMiser / HomeBoost | Commercial engines; approval is not transferable |
+| Fake demo savings to “look complete” | Regulatory and product-trust blocker |
+| Claim ACCA or DOE listing by using OS-HPXML | Listing is product-specific |
+
+## Success for the current milestone
+
+- Architecture files exist in the store and in the repo `docs/` tree
+- A PR from a **new** `main` branch contains a runnable slice + tests + changelog
+- A reviewer can create a home, see valid HPXML, and see either real EnergyPlus numbers or a clear unavailable state — never a made-up kWh
