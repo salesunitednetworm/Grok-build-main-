@@ -1,0 +1,452 @@
+"use client";
+
+import { useParams } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import { formatDelta, formatEnergy } from "@/lib/format";
+import type { BuildingModel, BuildingPayload, EngineStatus, Home, HpxmlDoc, Job, Scenario } from "@/lib/types";
+
+const STEPS = ["Building", "Validate", "HPXML", "Simulate", "Results", "Upgrade"] as const;
+
+function setPath(payload: BuildingPayload, path: string, value: string | number) {
+  const clone = structuredClone(payload);
+  const parts = path.split(".");
+  let cursor: Record<string, unknown> = clone as unknown as Record<string, unknown>;
+  for (const part of parts.slice(0, -1)) {
+    cursor = cursor[part] as Record<string, unknown>;
+  }
+  const last = parts[parts.length - 1];
+  cursor[last] = typeof value === "number" || path.includes("azimuth") || path.includes("window") ? Number(value) : value;
+  if (path.startsWith("enclosure.window_area_by_azimuth.")) {
+    const az = path.split(".").pop() as string;
+    clone.enclosure.window_area_by_azimuth[az] = Number(value);
+  }
+  return clone;
+}
+
+export default function HomeDetailPage() {
+  const params = useParams<{ id: string }>();
+  const id = params.id;
+  const [step, setStep] = useState<(typeof STEPS)[number]>("Building");
+  const [home, setHome] = useState<Home | null>(null);
+  const [model, setModel] = useState<BuildingModel | null>(null);
+  const [hpxml, setHpxml] = useState<HpxmlDoc | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
+  const [scenario, setScenario] = useState<Scenario | null>(null);
+  const [status, setStatus] = useState<EngineStatus | null>(null);
+  const [ceilingR, setCeilingR] = useState(49);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [h, m, engine] = await Promise.all([api.home(id), api.model(id), api.status()]);
+        setHome(h);
+        setModel(m);
+        setStatus(engine);
+        try {
+          setHpxml(await api.getHpxml(id));
+        } catch {
+          setHpxml(null);
+        }
+        const jobs = await api.jobs(id);
+        if (jobs[0]) setJob(jobs[0]);
+        const scenarios = await api.scenarios(id);
+        if (scenarios[0]) setScenario(scenarios[0]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Load failed");
+      }
+    })();
+  }, [id]);
+
+  const payload = model?.payload;
+
+  async function save(event?: FormEvent) {
+    event?.preventDefault();
+    if (!payload) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setModel(await api.saveModel(id, payload));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function field(path: string, value: string | number) {
+    if (!payload) return;
+    setModel({ ...model!, payload: setPath(payload, path, value) });
+  }
+
+  async function validate() {
+    setBusy(true);
+    setError(null);
+    try {
+      if (payload) setModel(await api.saveModel(id, payload));
+      const next = await api.validate(id);
+      setModel(next);
+      setStep("Validate");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Validate failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function generate() {
+    setBusy(true);
+    setError(null);
+    try {
+      setHpxml(await api.generateHpxml(id));
+      setStep("HPXML");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "HPXML failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function simulate() {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await api.simulate(id);
+      setJob(next);
+      setStep(next.energy_result ? "Results" : "Simulate");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Simulate failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function compare() {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await api.createScenario(id, ceilingR);
+      setScenario(next);
+      setStep("Upgrade");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Scenario failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!home || !payload) {
+    return <p className="fine">{error || "Loading…"}</p>;
+  }
+
+  return (
+    <main>
+      {status && (
+        <div className="banner">
+          <strong>{status.available ? "Engine ready." : "Simulation unavailable."}</strong>{" "}
+          {status.reason || "EnergyPlus numbers appear only after a successful run."} Design loads,
+          if present, are <strong>preliminary</strong> and not ACCA Manual J.
+        </div>
+      )}
+
+      <h1>{home.name}</h1>
+      <p className="fine">
+        {home.city} {home.state_code} {home.postal_code} · model v{model?.version} ·{" "}
+        <span className={`status ${model?.status}`}>{model?.status}</span>
+      </p>
+
+      <ul className="steps">
+        {STEPS.map((item) => (
+          <li key={item}>
+            <button className={item === step ? "active" : ""} type="button" onClick={() => setStep(item)}>
+              {item}
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {error && <p className="errors">{error}</p>}
+
+      {step === "Building" && (
+        <form className="card" onSubmit={save}>
+          <h2>Building data</h2>
+          <p className="fine">Canonical model. Appliances and lighting use documented OS-HPXML-compatible defaults.</p>
+          <h3>Site</h3>
+          <div className="grid">
+            <label>
+              State
+              <input value={payload.site.state_code} onChange={(e) => field("site.state_code", e.target.value)} />
+            </label>
+            <label>
+              ZIP
+              <input value={payload.site.postal_code} onChange={(e) => field("site.postal_code", e.target.value)} />
+            </label>
+            <label>
+              IECC zone
+              <input value={payload.site.iecc_zone} onChange={(e) => field("site.iecc_zone", e.target.value)} />
+            </label>
+            <label>
+              Weather station
+              <input value={payload.site.weather_station} onChange={(e) => field("site.weather_station", e.target.value)} />
+            </label>
+          </div>
+          <h3>Construction</h3>
+          <div className="grid">
+            <label>
+              Conditioned floor area (ft²)
+              <input type="number" value={payload.construction.conditioned_floor_area_ft2} onChange={(e) => field("construction.conditioned_floor_area_ft2", Number(e.target.value))} />
+            </label>
+            <label>
+              Stories
+              <input type="number" step="0.5" value={payload.construction.stories} onChange={(e) => field("construction.stories", Number(e.target.value))} />
+            </label>
+            <label>
+              Ceiling height (ft)
+              <input type="number" step="0.1" value={payload.construction.ceiling_height_ft} onChange={(e) => field("construction.ceiling_height_ft", Number(e.target.value))} />
+            </label>
+            <label>
+              Bedrooms
+              <input type="number" value={payload.construction.bedrooms} onChange={(e) => field("construction.bedrooms", Number(e.target.value))} />
+            </label>
+            <label>
+              Year built
+              <input type="number" value={payload.construction.year_built} onChange={(e) => field("construction.year_built", Number(e.target.value))} />
+            </label>
+          </div>
+          <h3>Enclosure</h3>
+          <div className="grid">
+            <label>
+              ACH50
+              <input type="number" step="0.1" value={payload.enclosure.ach50} onChange={(e) => field("enclosure.ach50", Number(e.target.value))} />
+            </label>
+            <label>
+              Wall area (ft²)
+              <input type="number" value={payload.enclosure.wall_area_ft2} onChange={(e) => field("enclosure.wall_area_ft2", Number(e.target.value))} />
+            </label>
+            <label>
+              Wall assembly R
+              <input type="number" step="0.1" value={payload.enclosure.wall_assembly_r} onChange={(e) => field("enclosure.wall_assembly_r", Number(e.target.value))} />
+            </label>
+            <label>
+              Ceiling area (ft²)
+              <input type="number" value={payload.enclosure.ceiling_area_ft2} onChange={(e) => field("enclosure.ceiling_area_ft2", Number(e.target.value))} />
+            </label>
+            <label>
+              Ceiling assembly R
+              <input type="number" step="0.1" value={payload.enclosure.ceiling_assembly_r} onChange={(e) => field("enclosure.ceiling_assembly_r", Number(e.target.value))} />
+            </label>
+            <label>
+              Foundation
+              <select value={payload.enclosure.foundation_type} onChange={(e) => field("enclosure.foundation_type", e.target.value)}>
+                <option value="conditioned_basement">Conditioned basement</option>
+                <option value="slab_on_grade">Slab on grade</option>
+              </select>
+            </label>
+            <label>
+              Window U
+              <input type="number" step="0.01" value={payload.enclosure.window_u} onChange={(e) => field("enclosure.window_u", Number(e.target.value))} />
+            </label>
+            <label>
+              Window SHGC
+              <input type="number" step="0.01" value={payload.enclosure.window_shgc} onChange={(e) => field("enclosure.window_shgc", Number(e.target.value))} />
+            </label>
+          </div>
+          <h3>Systems</h3>
+          <div className="grid">
+            <label>
+              Heating AFUE
+              <input type="number" step="0.01" value={payload.systems.heating_efficiency_afue} onChange={(e) => field("systems.heating_efficiency_afue", Number(e.target.value))} />
+            </label>
+            <label>
+              Cooling SEER2
+              <input type="number" step="0.1" value={payload.systems.cooling_efficiency_seer2} onChange={(e) => field("systems.cooling_efficiency_seer2", Number(e.target.value))} />
+            </label>
+            <label>
+              DHW UEF
+              <input type="number" step="0.01" value={payload.systems.dhw_uef} onChange={(e) => field("systems.dhw_uef", Number(e.target.value))} />
+            </label>
+            <label>
+              Heat setpoint °F
+              <input type="number" value={payload.systems.heating_setpoint_f} onChange={(e) => field("systems.heating_setpoint_f", Number(e.target.value))} />
+            </label>
+            <label>
+              Cool setpoint °F
+              <input type="number" value={payload.systems.cooling_setpoint_f} onChange={(e) => field("systems.cooling_setpoint_f", Number(e.target.value))} />
+            </label>
+          </div>
+          <div className="row" style={{ marginTop: 16 }}>
+            <button type="submit" disabled={busy}>
+              Save draft
+            </button>
+            <button type="button" className="secondary" disabled={busy} onClick={() => void validate()}>
+              Validate
+            </button>
+          </div>
+        </form>
+      )}
+
+      {step === "Validate" && (
+        <div className="card">
+          <h2>Validation</h2>
+          <p>
+            Status: <span className={`status ${model?.status}`}>{model?.status}</span>
+          </p>
+          {model?.validation_errors?.length ? (
+            <ul className="errors">
+              {model.validation_errors.map((item) => (
+                <li key={item.field}>
+                  {item.field}: {item.message}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>Domain rules passed. This is not DOE, BPI-2400, or ACCA approval.</p>
+          )}
+          <div className="row">
+            <button type="button" disabled={busy || model?.status !== "valid"} onClick={() => void generate()}>
+              Generate HPXML
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === "HPXML" && (
+        <div className="card">
+          <h2>HPXML v5.0-rc1</h2>
+          {hpxml ? (
+            <>
+              <p className="fine">
+                {hpxml.namespace} · schema {hpxml.schema_version} · authored by this product, not BuildResidentialHPXML
+              </p>
+              <pre className="xml">{hpxml.xml_text}</pre>
+            </>
+          ) : (
+            <p className="fine">Not generated yet.</p>
+          )}
+          <div className="row">
+            <button type="button" disabled={busy} onClick={() => void generate()}>
+              Generate / refresh
+            </button>
+            <button type="button" className="secondary" disabled={busy || !hpxml} onClick={() => void simulate()}>
+              Run simulation
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === "Simulate" && (
+        <div className="card">
+          <h2>Simulation job</h2>
+          {job ? (
+            <>
+              <p>
+                Status: <span className={`status ${job.status}`}>{job.status}</span>
+              </p>
+              {job.unavailable_reason && <p className="banner">{job.unavailable_reason}</p>}
+              {job.error_message && <p className="errors">{job.error_message}</p>}
+              <p className="fine">
+                Artifacts: {job.artifacts.map((item) => `${item.kind} (${item.byte_size} B)`).join(", ") || "none"}
+              </p>
+            </>
+          ) : (
+            <p className="fine">No job yet. Generate HPXML first, then run.</p>
+          )}
+          <div className="row">
+            <button type="button" disabled={busy} onClick={() => void simulate()}>
+              Queue OpenStudio-HPXML
+            </button>
+            <button type="button" className="secondary" onClick={() => setStep("Results")}>
+              View results
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === "Results" && (
+        <div className="card">
+          <h2>Energy results</h2>
+          {!job?.energy_result ? (
+            <p>
+              No EnergyPlus annual results are stored. This screen will not invent kWh.{" "}
+              {job?.unavailable_reason || "Run the simulation on a host with OpenStudio 3.11.0."}
+            </p>
+          ) : (
+            <div className="grid">
+              <div className="metric">
+                Electricity
+                <b>{formatEnergy(job.energy_result.electricity_kwh, "kWh")}</b>
+              </div>
+              <div className="metric">
+                Natural gas
+                <b>{formatEnergy(job.energy_result.natural_gas_therm, "therm")}</b>
+              </div>
+              <div className="metric">
+                Total
+                <b>{formatEnergy(job.energy_result.total_mbtu, "MBtu")}</b>
+              </div>
+              <div className="metric">
+                Heating design load (preliminary)
+                <b>{formatEnergy(job.energy_result.heating_design_load_btuh, "Btu/h")}</b>
+              </div>
+              <div className="metric">
+                Cooling sensible load (preliminary)
+                <b>{formatEnergy(job.energy_result.cooling_sensible_design_load_btuh, "Btu/h")}</b>
+              </div>
+            </div>
+          )}
+          <p className="fine" style={{ marginTop: 16 }}>
+            Source would be {job?.energy_result?.source || "none"}. Loads qualification:{" "}
+            {job?.energy_result?.loads_qualification || "n/a"}.
+          </p>
+        </div>
+      )}
+
+      {step === "Upgrade" && (
+        <div className="card">
+          <h2>Compare attic insulation</h2>
+          <p className="fine">
+            Clones the validated model and changes only ceiling assembly R. Pre/post are otherwise identical.
+            Deltas appear only if both EnergyPlus jobs succeed.
+          </p>
+          <label style={{ maxWidth: 240 }}>
+            Upgrade ceiling R
+            <input type="number" step="0.1" value={ceilingR} onChange={(e) => setCeilingR(Number(e.target.value))} />
+          </label>
+          <div className="row" style={{ marginTop: 12 }}>
+            <button type="button" disabled={busy} onClick={() => void compare()}>
+              Generate upgrade and queue both jobs
+            </button>
+          </div>
+          {scenario && (
+            <div style={{ marginTop: 20 }}>
+              <p>
+                Comparison: <span className={`status ${scenario.comparison?.status}`}>{scenario.comparison?.status}</span>
+              </p>
+              <div className="grid">
+                <div className="metric">
+                  Electricity delta
+                  <b>{formatDelta(scenario.comparison?.electricity_kwh_delta, "kWh")}</b>
+                </div>
+                <div className="metric">
+                  Gas delta
+                  <b>{formatDelta(scenario.comparison?.natural_gas_therm_delta, "therm")}</b>
+                </div>
+                <div className="metric">
+                  Total delta
+                  <b>{formatDelta(scenario.comparison?.total_mbtu_delta, "MBtu")}</b>
+                </div>
+              </div>
+              <p className="fine">{scenario.comparison?.notes}</p>
+              <p className="fine">
+                Baseline job {scenario.baseline_job?.status}; upgrade job {scenario.upgrade_job?.status}. No savings
+                percentage is calculated in this slice.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </main>
+  );
+}

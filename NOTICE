@@ -1,0 +1,15 @@
+This product invokes, when installed, unmodified OpenStudio SDK 3.11.0,
+EnergyPlus 25.2.0 (bundled with that OpenStudio release), and
+OpenStudio-HPXML v1.12.0.
+
+Those works are copyright Alliance for Energy Innovation, LLC and other
+contributors, and are licensed under BSD-3-like terms that require
+retention of notices and restrict use of the OpenStudio and EnergyPlus
+names on modified distributions. Official license texts:
+
+- https://raw.githubusercontent.com/NREL/OpenStudio/develop/LICENSE.md
+- https://raw.githubusercontent.com/NREL/EnergyPlus/develop/LICENSE.txt
+- https://raw.githubusercontent.com/NatLabRockies/OpenStudio-HPXML/master/LICENSE.md
+
+HPXML instance documents are authored here. The HPXML schema license in
+hpxmlwg/hpxml was unverified as of 2026-11-02.
