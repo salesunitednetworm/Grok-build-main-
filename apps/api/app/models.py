@@ -206,3 +206,43 @@ class PackageProposal(Base):
     total_mbtu_delta: Mapped[float | None] = mapped_column(Float)
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ProgramApplication(Base):
+    __tablename__ = "program_applications"
+    __table_args__ = (UniqueConstraint("home_id", "pack_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    home_id: Mapped[str] = mapped_column(ForeignKey("homes.id"), nullable=False, index=True)
+    pack_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class ProgramEvaluation(Base):
+    __tablename__ = "program_evaluations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    home_id: Mapped[str] = mapped_column(ForeignKey("homes.id"), nullable=False, index=True)
+    application_id: Mapped[str] = mapped_column(ForeignKey("program_applications.id"), nullable=False)
+    pack_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    pack_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    state_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    program: Mapped[str] = mapped_column(String(16), nullable=False)
+    overall_status: Mapped[str] = mapped_column(String(64), nullable=False)
+    compliance_claim: Mapped[str] = mapped_column(String(64), nullable=False, default="not_doe_approved_not_submitted")
+    portal_status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_submitted")
+    reservation_status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_reserved")
+    payment_status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_paid")
+    savings_percent: Mapped[float | None] = mapped_column(Float)
+    savings_method: Mapped[str | None] = mapped_column(String(128))
+    savings_band: Mapped[str | None] = mapped_column(String(32))
+    rebate_cap_usd: Mapped[float | None] = mapped_column(Float)
+    cost_share_percent: Mapped[float | None] = mapped_column(Float)
+    baseline_job_id: Mapped[str | None] = mapped_column(ForeignKey("simulation_jobs.id"))
+    upgrade_job_id: Mapped[str | None] = mapped_column(ForeignKey("simulation_jobs.id"))
+    scenario_id: Mapped[str | None] = mapped_column(ForeignKey("upgrade_scenarios.id"))
+    package_id: Mapped[str | None] = mapped_column(ForeignKey("package_proposals.id"))
+    result: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

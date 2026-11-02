@@ -67,6 +67,8 @@ ZIP weather uses OS-HPXML `zipcode_weather_stations.csv`. Official station is al
 
 Verification harness: `apps/api/tests/verification/` (versioned artifacts; no ASHRAE 140 verdicts).
 
+NC / GA HOMES/HEAR **program screens** are versioned JSON rule packs. They pin the pack version on each evaluation, use stored EnergyPlus totals only, and never claim DOE approval or portal submission.
+
 ## Attribution
 
 OpenStudio, EnergyPlus, and OpenStudio-HPXML are used as unmodified engines under their BSD-3-like licenses. This product is not named OpenStudio or EnergyPlus. See `NOTICE`.

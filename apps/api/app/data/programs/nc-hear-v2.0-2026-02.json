@@ -1,0 +1,139 @@
+{
+  "pack_id": "nc-hear-v2.0-2026-02",
+  "pack_version": "2.0.0",
+  "state_code": "NC",
+  "program": "hear",
+  "statute": "IRA §50122",
+  "public_name": "Home Electrification and Appliance Rebates (HEAR)",
+  "authority": "state",
+  "published_date": "2026-02-25",
+  "effective_from": "2026-02-25",
+  "effective_to": null,
+  "this_product_doe_approved": false,
+  "named_modeling_software": null,
+  "named_modeling_software_status": "hear_does_not_require_homes_tool",
+  "pathway": "qualified_electrification_project",
+  "sources": [
+    {
+      "title": "Energy Saver NC Program Requirements v2.0",
+      "url": "https://www.energysavernc.org/wp-content/uploads/2026/04/NHH-941_Program_Requirements_ENG_FINAL_DIGI_260331.pdf",
+      "retrieved": "2026-11-02",
+      "status": "retrieved",
+      "note": "Tables 3–4 HEAR lifetime max and product caps. Change log 1.01 (4/3/2025) added Manual J/S for heat-pump reservation."
+    },
+    {
+      "title": "DOE Program Requirements v2.1 Table 7",
+      "url": "https://www.energy.gov/sites/default/files/2024-12/program-requirements-and-application-instructions_121624.pdf.pdf",
+      "retrieved": "2026-11-02",
+      "status": "retrieved"
+    }
+  ],
+  "unverified": [
+    "Whether NC enforces the federal combined $840 cap for kitchen appliance + heat-pump dryer (v2.1). NC Table 4 lists each at $840.",
+    "County-level HUD AMI dollar limits are not copied here; AMI band is user-declared."
+  ],
+  "income": {
+    "eligible_bands": ["below_80", "80_to_150"],
+    "ineligible_bands": ["above_150"],
+    "ami_lookup": "not_implemented_user_declared"
+  },
+  "property": {
+    "existing_homes_only": false,
+    "new_construction_appliances": true,
+    "new_construction_panel_wiring": false,
+    "occupancy": ["owner", "renter_with_landlord_authorization"],
+    "dwelling_types": ["single-family", "multifamily"],
+    "diy": false,
+    "registered_contractor_required": true
+  },
+  "measures": {
+    "allowed": [
+      "heat_pump_space",
+      "heat_pump_water_heater",
+      "heat_pump_dryer",
+      "electric_stove",
+      "panel",
+      "wiring",
+      "envelope"
+    ],
+    "panel_wiring_only_to_enable_appliance": true,
+    "must_pair_with_homes": false
+  },
+  "fuel_restrictions": {
+    "appliance_purchase_must_be": ["new_construction", "replace_nonelectric", "first_time"],
+    "replacing_heat_pump_with_heat_pump": false,
+    "source": "IRA §50122 / DOE v2.1 QEP appliance timing"
+  },
+  "envelope_prerequisites": {
+    "combined_cap_usd": 1600,
+    "covers": ["insulation", "air_sealing", "ventilation"],
+    "note": "Federal/NC product cap $1,600 combined. No additional numeric envelope threshold was retrieved for NC HEAR."
+  },
+  "modeled_savings": {
+    "required": false,
+    "this_product_method_qualifies_rebate": false,
+    "note": "HEAR is not a modeled-savings program and has no BPI-2400 software-approval list."
+  },
+  "rebate_limits": [
+    {
+      "ami_band": "below_80",
+      "cost_share_percent": 100,
+      "lifetime_max_usd": 14000,
+      "dwelling": "single-family"
+    },
+    {
+      "ami_band": "80_to_150",
+      "cost_share_percent": 50,
+      "lifetime_max_usd": 14000,
+      "dwelling": "single-family"
+    }
+  ],
+  "product_caps_usd": {
+    "heat_pump_space": 8000,
+    "heat_pump_water_heater": 1750,
+    "heat_pump_dryer": 840,
+    "electric_stove": 840,
+    "envelope": 1600,
+    "panel": 4000,
+    "wiring": 2500,
+    "dwelling_unit_maximum": 14000
+  },
+  "federal_combined_kitchen_dryer_cap_usd": 840,
+  "federal_combined_kitchen_dryer_nc_enforcement": "unverified",
+  "required_docs": [
+    "income_docs_or_categorical_letter",
+    "invoice_with_address_dates_cost_rebate",
+    "photo_of_existing_equipment_if_appliance_qep",
+    "limited_assessment_if_heat_pump_space",
+    "acca_manual_j_if_heat_pump_space",
+    "landlord_authorization_if_renter"
+  ],
+  "heat_pump_space_rules": {
+    "limited_assessment_for_reservation": true,
+    "acca_manual_j_upload": true,
+    "acca_manual_s_sizing": true,
+    "source": "NC v2.0 change log 1.01 (2025-04-03)",
+    "note": "State HEAR documentation rule, not HOMES software approval. This product's design loads remain preliminary and are not ACCA-approved."
+  },
+  "reservation_workflow": {
+    "portal": "energysavernc.org / APTIM",
+    "this_product_submits": false,
+    "steps": [
+      "Resident chooses HOMES, HEAR, or both",
+      "Income documents",
+      "Apply online or paper",
+      "Staff review",
+      "Contractor quotes; heat-pump reservation includes limited assessment + Manual J",
+      "Contractor submits rebate; discount on invoice"
+    ]
+  },
+  "stacking": {
+    "same_measure_homes_and_hear": false,
+    "envelope_hear_only_if_scopes_differ": true,
+    "combined_cannot_exceed_purchase_price": true
+  },
+  "retroactivity": {
+    "hear": false,
+    "source": "NC DEQ FAQ"
+  }
+}

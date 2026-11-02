@@ -13,12 +13,14 @@ import type {
   HpxmlDoc,
   Job,
   PackageProposal,
+  ProgramEvaluation,
+  ProgramPack,
   Scenario,
   UtilityHistory,
   WeatherStation,
 } from "@/lib/types";
 
-const STEPS = ["Building", "Validate", "HPXML", "Simulate", "Results", "Upgrade", "Bills", "Calibrate", "Packages"] as const;
+const STEPS = ["Building", "Validate", "HPXML", "Simulate", "Results", "Upgrade", "Bills", "Calibrate", "Packages", "Programs"] as const;
 
 function setPath(payload: BuildingPayload, path: string, value: string | number) {
   const clone = structuredClone(payload);
@@ -52,6 +54,11 @@ export default function HomeDetailPage() {
   const [history, setHistory] = useState<UtilityHistory | null>(null);
   const [calibration, setCalibration] = useState<CalibrationRun | null>(null);
   const [packages, setPackages] = useState<PackageProposal[]>([]);
+  const [packs, setPacks] = useState<ProgramPack[]>([]);
+  const [packId, setPackId] = useState("nc-homes-v2.0-2026-02");
+  const [amiBand, setAmiBand] = useState("below_80");
+  const [programMeasures, setProgramMeasures] = useState("attic_insulation");
+  const [evaluations, setEvaluations] = useState<ProgramEvaluation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -87,6 +94,16 @@ export default function HomeDetailPage() {
           setPackages(await api.packages(id));
         } catch {
           setPackages([]);
+        }
+        try {
+          setPacks(await api.programPacks());
+        } catch {
+          setPacks([]);
+        }
+        try {
+          setEvaluations(await api.programEvaluations(id));
+        } catch {
+          setEvaluations([]);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Load failed");
@@ -249,6 +266,28 @@ export default function HomeDetailPage() {
       setStep("Upgrade");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Scenario failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runProgramScreen() {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await api.evaluateProgram(id, {
+        pack_id: packId,
+        ami_band: amiBand,
+        measures: programMeasures.split(",").map((item) => item.trim()).filter(Boolean),
+        existing_home: true,
+        bills_twelve_months_all_fuels: true,
+        georgia_resident: packId.startsWith("ga-"),
+        scenario_id: scenario?.id,
+      });
+      setEvaluations((current) => [next, ...current]);
+      setStep("Programs");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Program screen failed");
     } finally {
       setBusy(false);
     }
@@ -769,6 +808,80 @@ export default function HomeDetailPage() {
                 </div>
               </div>
               <p className="fine">{row.notes}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {step === "Programs" && (
+        <div className="card">
+          <h2>NC / GA program screen</h2>
+          <p className="fine">
+            Versioned rule packs from published NC DEQ / Energy Saver NC and GEFA documents. This product is{" "}
+            <strong>not DOE-approved</strong>. The screen does not submit, reserve, approve, or pay. HOMES
+            percentages, when shown, are preliminary site-energy from stored EnergyPlus totals — not BPI-2400
+            equivalent-energy.
+          </p>
+          <div className="grid">
+            <label>
+              Rule pack
+              <select value={packId} onChange={(e) => setPackId(e.target.value)}>
+                {packs.map((pack) => (
+                  <option key={pack.pack_id} value={pack.pack_id}>
+                    {pack.state_code} {pack.public_name} ({pack.pack_version})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              AMI band (user-declared)
+              <select value={amiBand} onChange={(e) => setAmiBand(e.target.value)}>
+                <option value="below_80">below 80% AMI</option>
+                <option value="80_to_150">80–150% AMI</option>
+                <option value="above_150">above 150% AMI</option>
+              </select>
+            </label>
+            <label>
+              Measures (comma-separated)
+              <input value={programMeasures} onChange={(e) => setProgramMeasures(e.target.value)} />
+            </label>
+          </div>
+          <div className="row" style={{ marginTop: 12 }}>
+            <button type="button" disabled={busy} onClick={() => void runProgramScreen()}>
+              Evaluate against pinned pack
+            </button>
+          </div>
+          {evaluations.map((row) => (
+            <div key={row.id} style={{ marginTop: 16 }}>
+              <p>
+                {row.public_name}: <span className={`status ${row.overall_status}`}>{row.overall_status}</span>
+              </p>
+              <p className="fine">
+                Pack {row.pack_id} v{row.pack_version}
+                {row.rule_pack_changed ? ` · current pack is now ${row.current_pack_version} (not applied to this row)` : ""}{" "}
+                · {row.compliance_claim} · portal {row.portal_status} · reservation {row.reservation_status} · payment{" "}
+                {row.payment_status}
+              </p>
+              <div className="grid">
+                <div className="metric">
+                  Site-energy screen
+                  <b>
+                    {row.savings_percent == null ? "not evaluated" : `${row.savings_percent.toFixed(1)}%`}
+                  </b>
+                </div>
+                <div className="metric">
+                  Documented cap (not awarded)
+                  <b>{row.rebate_cap_usd == null ? "—" : `$${row.rebate_cap_usd}`}</b>
+                </div>
+              </div>
+              <p className="fine">{row.notes}</p>
+              <ul className="fine">
+                {row.checks.map((check) => (
+                  <li key={check.code}>
+                    {check.status}: {check.message}
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>

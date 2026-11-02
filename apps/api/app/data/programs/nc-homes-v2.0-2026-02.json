@@ -1,0 +1,160 @@
+{
+  "pack_id": "nc-homes-v2.0-2026-02",
+  "pack_version": "2.0.0",
+  "state_code": "NC",
+  "program": "homes",
+  "statute": "IRA §50121",
+  "public_name": "Homeowners Managing Efficiency Savings (HOMES)",
+  "authority": "state",
+  "published_date": "2026-02-25",
+  "effective_from": "2026-02-25",
+  "effective_to": null,
+  "this_product_doe_approved": false,
+  "named_modeling_software": "Snugg Pro",
+  "named_modeling_software_status": "state_named_not_this_product",
+  "pathway": "modeled",
+  "sources": [
+    {
+      "title": "Energy Saver NC Program Requirements v2.0",
+      "url": "https://www.energysavernc.org/wp-content/uploads/2026/04/NHH-941_Program_Requirements_ENG_FINAL_DIGI_260331.pdf",
+      "retrieved": "2026-11-02",
+      "status": "retrieved",
+      "note": "Version 2.0 | February 2026; change log 2/25/2026 rebrand only. Table 1 single-family HOMES amounts."
+    },
+    {
+      "title": "Energy Saver NC HOMES program page",
+      "url": "https://www.energysavernc.org/about-the-program/homeowners-managing-efficiency-savings-homes/",
+      "retrieved": "2026-11-02",
+      "status": "retrieved",
+      "note": "Income + 20% modeled savings; 12 months of bills."
+    },
+    {
+      "title": "NC DEQ Energy Saver North Carolina",
+      "url": "https://www.deq.nc.gov/energy-climate/state-energy-office/energy-saver-north-carolina",
+      "retrieved": "2026-11-02",
+      "status": "retrieved"
+    },
+    {
+      "title": "DOE Program Requirements v2.1",
+      "url": "https://www.energy.gov/sites/default/files/2024-12/program-requirements-and-application-instructions_121624.pdf.pdf",
+      "retrieved": "2026-11-02",
+      "status": "retrieved",
+      "note": "Federal floors; NC is stricter on income."
+    }
+  ],
+  "unverified": [
+    "Whether NC republished v2.0 after DOE Program Notice 26-1 (HOMES-only, effective 2026-05-29) to drop ENERGY STAR or geotagged photos.",
+    "Whether another DOE-listed modeled tool besides Snugg Pro would be accepted.",
+    "County-level HUD AMI dollar limits are not copied here; AMI band is user-declared until an Address API lookup exists."
+  ],
+  "income": {
+    "eligible_bands": ["below_80", "80_to_150"],
+    "ineligible_bands": ["above_150"],
+    "note": "NC is stricter than federal HOMES: households >150% AMI are not eligible.",
+    "ami_lookup": "not_implemented_user_declared"
+  },
+  "property": {
+    "existing_homes_only": true,
+    "new_construction": false,
+    "occupancy": ["owner", "renter_with_landlord_authorization"],
+    "dwelling_types": ["single-family", "multifamily"],
+    "diy": false,
+    "geography": "North Carolina, all 100 counties per energysavernc.org",
+    "registered_contractor_required": true
+  },
+  "measures": {
+    "must_be_in_named_model": true,
+    "named_model": "Snugg Pro",
+    "allowed": ["attic_insulation", "air_sealing", "insulation", "ventilation", "heat_pump", "heat_pump_water_heater", "duct_leakage", "other_modeled"],
+    "note": "Measures installed and invoiced must be in the Snugg Pro model. This product does not substitute for Snugg Pro."
+  },
+  "fuel_restrictions": {
+    "all_fuels_bills_required": true,
+    "note": "12 months of utility bills for all fuels (HOMES page)."
+  },
+  "envelope_prerequisites": {
+    "required_docs": ["weatherization_photos", "pre_existing_insulation_levels"],
+    "blower_door": "not_stated_as_numeric_threshold",
+    "note": "v2.0 lists weatherization photos and pre-existing insulation levels. No numeric ACH50 floor is copied here because it is not in the retrieved NC table."
+  },
+  "modeled_savings": {
+    "required": true,
+    "minimum_percent": 20,
+    "higher_tier_percent": 35,
+    "method_required_by_program": "bpi_2400_equivalent_energy",
+    "this_product_method": "preliminary_site_energy_from_stored_energyplus_totals",
+    "this_product_method_qualifies_rebate": false,
+    "note": "NC modeled pathway, minimum 20% predicted savings. This product is not DOE-approved and does not compute BPI-2400 equivalent-energy percent."
+  },
+  "energy_star": {
+    "required_in_pack": true,
+    "source": "NC Program Requirements v2.0",
+    "notice_26_1_may_make_optional": true,
+    "notice_26_1_nc_adoption": "unverified"
+  },
+  "rebate_limits": [
+    {
+      "savings_band": "20_to_34",
+      "ami_band": "below_80",
+      "cost_share_percent": 100,
+      "max_usd": 16000,
+      "dwelling": "single-family"
+    },
+    {
+      "savings_band": "20_to_34",
+      "ami_band": "80_to_150",
+      "cost_share_percent": 50,
+      "max_usd": 2000,
+      "dwelling": "single-family"
+    },
+    {
+      "savings_band": "35_or_greater",
+      "ami_band": "below_80",
+      "cost_share_percent": 100,
+      "max_usd": 16000,
+      "dwelling": "single-family"
+    },
+    {
+      "savings_band": "35_or_greater",
+      "ami_band": "80_to_150",
+      "cost_share_percent": 50,
+      "max_usd": 4000,
+      "dwelling": "single-family"
+    }
+  ],
+  "multifamily_note": "v2.0 Table 2 uses the same per-dwelling-unit figures if ≥50% of households in the building meet the income row. Per-building caps are not copied from a fragmented federal table.",
+  "required_docs": [
+    "income_docs_or_categorical_letter",
+    "twelve_months_all_fuel_bills",
+    "snugg_pro_model",
+    "invoice_with_address_dates_cost_rebate",
+    "weatherization_photos",
+    "pre_existing_insulation_levels",
+    "landlord_authorization_if_renter"
+  ],
+  "categorical_eligibility_note": "Talking points: categorical enrollment letter from the last 12 months; cards not accepted. Treat quoted talking-point bullets as medium confidence.",
+  "reservation_workflow": {
+    "portal": "energysavernc.org / APTIM",
+    "this_product_submits": false,
+    "steps": [
+      "Resident chooses HOMES, HEAR, or both",
+      "Income documents (and 12-month bills if HOMES)",
+      "Apply online (preferred) or paper",
+      "Staff review",
+      "Assessment and Registered Contractor",
+      "Contractor submits rebate; discount on invoice"
+    ],
+    "paper_mail": "1613 Mail Service Center, Raleigh NC 27699-1613"
+  },
+  "stacking": {
+    "same_measure_homes_and_hear": false,
+    "envelope_hear_only_if_scopes_differ": true,
+    "combined_cannot_exceed_purchase_price": true,
+    "source": "NC DEQ FAQ / v2.0"
+  },
+  "retroactivity": {
+    "hear": false,
+    "homes": "possible_if_started_on_or_after_2022-08-16_and_meets_doe_and_state",
+    "source": "NC DEQ FAQ"
+  }
+}

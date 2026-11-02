@@ -168,6 +168,12 @@ Reproducible checks with versioned JSON under `tests/verification/artifacts/`:
 
 The harness records `ashrae_140_verdict: null`. It does **not** invent ASHRAE 140 Class II / RESNET HVAC / DSE pass/fail.
 
+## Program screens (NC / GA HOMES/HEAR)
+
+Rule packs under `apps/api/app/data/programs/` encode **only** published tables and lists from the 2026-11-02 research notes. Each evaluation stores the pack version. A later pack never rewrites a prior evaluation.
+
+HOMES/HER modeled thresholds (20% / 35%) are applied only to a **preliminary site-energy percent** from two stored EnergyPlus `total_mbtu` values. That percent is **not** BPI-2400 equation 4.3.1.i. Missing EnergyPlus results stay `not_evaluable`; no kWh is invented. This product remains **not DOE-approved** and does not submit to state portals.
+
 ## Package optimizer
 
 Attic R-49, air sealing to ACH50 1.5, and HPWH (type `heat pump water heater`, UEF 3.5) are combined into seven packages. Each package clones the payload, changes only those ECM fields, and **re-runs EnergyPlus**. Deltas are absolute kWh / therm / MBtu from two parsed jobs. No added percentage.

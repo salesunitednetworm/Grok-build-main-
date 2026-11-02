@@ -222,3 +222,97 @@ class PackageOut(BaseModel):
     created_at: datetime
     baseline_job: JobOut | None = None
     upgrade_job: JobOut | None = None
+
+
+class ProgramPackOut(BaseModel):
+    pack_id: str
+    pack_version: str
+    state_code: str
+    program: str
+    public_name: str
+    effective_from: str | None = None
+    effective_to: str | None = None
+    this_product_doe_approved: bool
+    named_modeling_software: str | None = None
+    sources: list[dict[str, Any]] = Field(default_factory=list)
+    unverified: list[str] = Field(default_factory=list)
+
+
+class ProgramApplicationIn(BaseModel):
+    pack_id: str
+    household_size: int | None = Field(default=None, ge=1, le=20)
+    ami_band: str | None = None
+    ami_band_source: str = "user_declared"
+    categorical_programs: list[str] = Field(default_factory=list)
+    dwelling_type: str = "single-family"
+    occupancy: str = "owner"
+    landlord_authorization: bool = False
+    primary_residence: bool | None = None
+    georgia_resident: bool | None = None
+    existing_home: bool = True
+    new_construction: bool = False
+    measures: list[str] = Field(default_factory=list)
+    replacing_fuel: dict[str, str] = Field(default_factory=dict)
+    first_time_appliance: dict[str, bool] = Field(default_factory=dict)
+    project_cost_usd: float | None = Field(default=None, ge=0)
+    prior_hear_usd: float = Field(default=0, ge=0)
+    paired_homes_screen: str = "none"
+    docs_present: dict[str, bool] = Field(default_factory=dict)
+    blower_door_pre: bool = False
+    blower_door_post: bool = False
+    bills_twelve_months_all_fuels: bool = False
+    energy_star_when_spec: bool | None = None
+    manual_j_uploaded: bool = False
+    existing_equipment_photo: bool = False
+    also_applying_homes: bool = False
+    also_applying_hear: bool = False
+    same_measure_on_both_programs: bool = False
+    scenario_id: str | None = None
+    package_id: str | None = None
+
+
+class ProgramApplicationOut(OrmModel):
+    id: str
+    home_id: str
+    pack_id: str
+    payload: dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProgramEvaluationOut(BaseModel):
+    id: str
+    home_id: str
+    application_id: str
+    pack_id: str
+    pack_version: str
+    state_code: str
+    program: str
+    public_name: str
+    overall_status: str
+    compliance_claim: str
+    portal_status: str
+    reservation_status: str
+    payment_status: str
+    this_product_doe_approved: bool
+    named_modeling_software: str | None
+    savings_percent: float | None
+    savings_method: str | None
+    savings_band: str | None
+    rebate_cap_usd: float | None
+    cost_share_percent: float | None
+    product_caps_usd: dict[str, int]
+    checks: list[dict[str, Any]]
+    sources: list[dict[str, Any]]
+    unverified: list[str]
+    reservation_workflow: dict[str, Any]
+    notes: str
+    current_pack_id: str | None
+    current_pack_version: str | None
+    rule_pack_changed: bool
+    baseline_job_id: str | None = None
+    upgrade_job_id: str | None = None
+    scenario_id: str | None = None
+    package_id: str | None = None
+    created_at: datetime
+

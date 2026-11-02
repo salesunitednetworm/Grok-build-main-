@@ -1,0 +1,138 @@
+{
+  "pack_id": "ga-hear-limited-2026-11-02",
+  "pack_version": "2026.11.02",
+  "state_code": "GA",
+  "program": "hear",
+  "statute": "IRA §50122",
+  "public_name": "Home Electric Appliance Rebates (HEAR)",
+  "authority": "state",
+  "published_date": "2026-11-02",
+  "effective_from": "2026-10-26",
+  "effective_to": null,
+  "this_product_doe_approved": false,
+  "named_modeling_software": null,
+  "named_modeling_software_status": "hear_does_not_require_homes_tool",
+  "pathway": "qualified_electrification_project",
+  "sources": [
+    {
+      "title": "Georgia HEAR page",
+      "url": "https://energyrebates.georgia.gov/home-electrification-and-appliance-rebates",
+      "retrieved": "2026-11-02",
+      "status": "retrieved",
+      "note": "Limited reopen; wiring/panel only with HER. One page says reopen on October 26, 2026."
+    },
+    {
+      "title": "Georgia HEAR program updates",
+      "url": "https://energyrebates.georgia.gov/hear-program-updates",
+      "retrieved": "2026-11-02",
+      "status": "retrieved",
+      "note": "Single-family reopen; MF will not reopen; DIY will not reopen. Page says it has reopened."
+    },
+    {
+      "title": "GEFA HEAR Consumer Protection Plan (50122)",
+      "url": "https://energyrebates.georgia.gov/document/document/hear-consumer-protection-plan/download",
+      "retrieved": "2026-11-02",
+      "status": "retrieved"
+    }
+  ],
+  "unverified": [
+    "GA HEAR pages disagree on tense of reopen vs dated October 26, 2026 reopen. This pack uses 2026-10-26 as effective_from and treats live pages as post-reopen rules.",
+    "Whether DIY/MF closures are permanent by regulation or by funds/policy.",
+    "County-level HUD AMI dollar limits are not copied here."
+  ],
+  "income": {
+    "eligible_bands": ["below_80", "80_to_150"],
+    "ineligible_bands": ["above_150"],
+    "ami_lookup": "not_implemented_user_declared",
+    "note": "≥150% AMI not eligible for HEAR."
+  },
+  "property": {
+    "existing_homes_only": true,
+    "new_construction": false,
+    "occupancy": ["owner", "renter_with_landlord_authorization"],
+    "dwelling_types": ["single-family"],
+    "multifamily": "will_not_reopen",
+    "diy": false,
+    "diy_status": "will_not_reopen",
+    "must_pair_with_homes_project": true,
+    "pairing_program": "ga-her-2026-11-02"
+  },
+  "measures": {
+    "allowed": ["wiring", "panel"],
+    "not_currently_offered": [
+      "heat_pump_space",
+      "heat_pump_water_heater",
+      "heat_pump_dryer",
+      "electric_stove",
+      "envelope"
+    ],
+    "must_pair_with_homes": true,
+    "note": "Older DOE bulletin described a broader HEAR menu. Live pages on 2026-11-02 offer wiring and panel only, in conjunction with an eligible HER project."
+  },
+  "fuel_restrictions": {
+    "standalone_hear_without_her": false,
+    "note": "Current GA HEAR is an add-on to HER, not a standalone appliance QEP menu."
+  },
+  "envelope_prerequisites": {
+    "envelope_measures_currently_offered": false
+  },
+  "modeled_savings": {
+    "required": false,
+    "this_product_method_qualifies_rebate": false,
+    "note": "HEAR has no savings percentage. Pairing HER project is a program-eligibility constraint, not a modeled-savings claim by this product."
+  },
+  "rebate_limits": [
+    {
+      "ami_band": "below_80",
+      "measure": "wiring",
+      "cost_share_percent": 100,
+      "max_usd": 2500
+    },
+    {
+      "ami_band": "below_80",
+      "measure": "panel",
+      "cost_share_percent": 100,
+      "max_usd": 4000
+    },
+    {
+      "ami_band": "80_to_150",
+      "measure": "wiring",
+      "cost_share_percent": 50,
+      "max_usd": 2500
+    },
+    {
+      "ami_band": "80_to_150",
+      "measure": "panel",
+      "cost_share_percent": 50,
+      "max_usd": 4000
+    }
+  ],
+  "product_caps_usd": {
+    "wiring": 2500,
+    "panel": 4000,
+    "dwelling_unit_maximum": 14000
+  },
+  "lifetime_includes_prior_hear": true,
+  "required_docs": [
+    "income_docs_or_categorical",
+    "eligible_her_project",
+    "id_residency_ownership_or_landlord_authorization",
+    "neighborly_application",
+    "invoice"
+  ],
+  "reservation_workflow": {
+    "portal": "Neighborly (energyrebates.georgia.gov)",
+    "this_product_submits": false,
+    "steps": [
+      "Eligible HER project in Neighborly",
+      "Add limited HEAR wiring and/or panel measures",
+      "Household application and program review",
+      "Install and proof of installation"
+    ]
+  },
+  "stacking": {
+    "same_measure_homes_and_hear": false,
+    "wiring_panel_may_braid_with_50121": true,
+    "source": "DOE v2.1 same-measure exception for electric load service centers or wiring"
+  }
+}

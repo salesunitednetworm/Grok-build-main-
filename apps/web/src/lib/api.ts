@@ -7,6 +7,8 @@ import type {
   HpxmlDoc,
   Job,
   PackageProposal,
+  ProgramEvaluation,
+  ProgramPack,
   Scenario,
   UtilityHistory,
   WeatherStation,
@@ -73,4 +75,12 @@ export const api = {
   createPackages: (id: string) =>
     request<PackageProposal[]>(`/api/v1/homes/${id}/packages`, { method: "POST" }),
   packages: (id: string) => request<PackageProposal[]>(`/api/v1/homes/${id}/packages`),
+  programPacks: () => request<ProgramPack[]>("/api/v1/programs"),
+  evaluateProgram: (id: string, body: Record<string, unknown>) =>
+    request<ProgramEvaluation>(`/api/v1/homes/${id}/program-evaluations`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  programEvaluations: (id: string) =>
+    request<ProgramEvaluation[]>(`/api/v1/homes/${id}/program-evaluations`),
 };
