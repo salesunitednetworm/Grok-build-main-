@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.domain.building import default_payload
+from app.domain.weather import lookup_zip
 from app.models import (
     BuildingModel,
     CalibrationRun,
@@ -35,6 +36,7 @@ from app.schemas import (
     ScenarioOut,
     UtilityHistoryIn,
     UtilityHistoryOut,
+    WeatherOut,
 )
 from app import services
 from app.storage import read_artifact
@@ -126,6 +128,25 @@ def defaults() -> dict:
     return default_payload()
 
 
+@router.get("/weather/{zipcode}", response_model=WeatherOut)
+def weather_for_zip(zipcode: str) -> WeatherOut:
+    station = lookup_zip(zipcode)
+    if station is None:
+        raise HTTPException(404, "ZIP is not in the OS-HPXML zipcode_weather_stations.csv table")
+    return WeatherOut(
+        zipcode=station.zipcode,
+        city=station.city,
+        state_code=station.state_code,
+        iecc_zone=station.iecc_zone,
+        official_station=station.official_station,
+        official_station_name=station.official_station_name,
+        used_station=station.used_station,
+        weather_source=station.weather_source,
+        epw_available=station.epw_available,
+        notes=station.notes,
+    )
+
+
 @router.get("/homes", response_model=list[HomeOut])
 def list_homes(db: Session = Depends(get_db)) -> list[Home]:
     return list(db.scalars(select(Home).order_by(Home.created_at.desc())))
@@ -185,7 +206,7 @@ def create_hpxml(home_id: str, db: Session = Depends(get_db)) -> HpxmlOut:
         namespace=doc.namespace,
         xml_text=doc.xml_text,
         generated_at=doc.generated_at,
-        validation_errors=[],
+        validation_errors=services.schema_errors_for(doc.xml_text),
     )
 
 
@@ -250,10 +271,21 @@ def get_artifact(job_id: str, kind: str, db: Session = Depends(get_db)) -> Respo
 @router.post("/homes/{home_id}/scenarios", response_model=ScenarioOut)
 def create_scenario(home_id: str, body: ScenarioCreate, db: Session = Depends(get_db)) -> ScenarioOut:
     home = _home(db, home_id)
-    if body.measure_type != "attic_insulation":
-        raise HTTPException(400, "v1 supports only attic_insulation")
+    if body.measure_type not in {"attic_insulation", "heat_pump", "duct_leakage"}:
+        raise HTTPException(400, "supported measures: attic_insulation, heat_pump, duct_leakage")
     try:
-        scenario = services.create_scenario(db, home, body.name, body.ceiling_assembly_r)
+        scenario = services.create_scenario(
+            db,
+            home,
+            body.name,
+            measure_type=body.measure_type,
+            ceiling_assembly_r=body.ceiling_assembly_r,
+            heating_efficiency_hspf2=body.heating_efficiency_hspf2,
+            cooling_efficiency_seer2=body.cooling_efficiency_seer2,
+            ductless=body.ductless,
+            duct_leakage_supply_cfm25=body.duct_leakage_supply_cfm25,
+            duct_leakage_return_cfm25=body.duct_leakage_return_cfm25,
+        )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     return scenario_out(db, scenario)

@@ -9,6 +9,7 @@ import type {
   PackageProposal,
   Scenario,
   UtilityHistory,
+  WeatherStation,
 } from "./types";
 
 const prefix = "";
@@ -50,14 +51,11 @@ export const api = {
   getHpxml: (id: string) => request<HpxmlDoc>(`/api/v1/homes/${id}/hpxml`),
   simulate: (id: string) => request<Job>(`/api/v1/homes/${id}/simulate`, { method: "POST" }),
   jobs: (id: string) => request<Job[]>(`/api/v1/homes/${id}/jobs`),
-  createScenario: (id: string, ceiling_assembly_r: number) =>
+  weather: (zip: string) => request<WeatherStation>(`/api/v1/weather/${zip}`),
+  createScenario: (id: string, body: Record<string, unknown>) =>
     request<Scenario>(`/api/v1/homes/${id}/scenarios`, {
       method: "POST",
-      body: JSON.stringify({
-        name: `Attic insulation to R-${ceiling_assembly_r}`,
-        measure_type: "attic_insulation",
-        ceiling_assembly_r,
-      }),
+      body: JSON.stringify(body),
     }),
   scenarios: (id: string) => request<Scenario[]>(`/api/v1/homes/${id}/scenarios`),
   saveBills: (id: string, body: { as_of: string; periods: unknown[] }) =>

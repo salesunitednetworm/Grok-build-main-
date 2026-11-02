@@ -33,6 +33,8 @@ class ParsedAnnual(BaseModel):
     cooling_sensible_design_load_btuh: float | None = None
     loads_qualification: str = "preliminary"
     raw_annual: dict[str, Any] = Field(default_factory=dict)
+    run_log_warnings: list[str] = Field(default_factory=list)
+    software_defaults: list[dict[str, str]] = Field(default_factory=list)
 
 
 def _flatten(node: Any, prefix: str = "") -> dict[str, float]:

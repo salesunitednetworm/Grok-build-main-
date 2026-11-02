@@ -37,7 +37,12 @@ Run on every save and before generate. Failures set `building_models.status = in
 | Heating setpoint °F | 50–80 | |
 | Cooling setpoint °F | 65–90 | Heating < cooling |
 | State code | USPS 2-letter | |
-| ZIP | 5 digits | Weather later |
+| ZIP | 5 digits | Maps to TMY3 via OS-HPXML `zipcode_weather_stations.csv` |
+| HSPF2 | 5–16 | Heat pump / mini-split heating efficiency |
+| Duct CFM25 | 0–2000 supply and return | Measured leakage; marked `data_source=measured` on the duct-leakage measure |
+| Attic type | `vented` \| `unvented` | First-class enclosure |
+| Foundation type | conditioned/unconditioned basement, slab, vented/unvented crawl | First-class enclosure |
+| Rim joist area / R | 0–5000 ft² / 1–80 | First-class enclosure |
 | Window areas | ≥ 0; sum ≤ wall area × 0.95 | Geometry sanity |
 
 We **do not copy** BPI-2400 Table 3.4 numeric limits into docs or code as if we own them. When the constraint engine is built, implement from the official PDF and cite the section, without republishing the table.
@@ -52,8 +57,8 @@ After generation, before persist:
 - Root `HPXML` namespace `http://hpxmlonline.com/2025/12`
 - `schemaVersion` `5.0` (v5.0-rc1 documents use this on the official 1.12.0 sample)
 - `Address` child order is `StateCode` then `ZipCode` (XSD rejects the reverse)
-- Present: SoftwareInfo, Building, BuildingSummary, Enclosure (infiltration + at least one wall, ceiling, window set), HVAC heating **and** cooling, DHW
-- IDs unique; HVAC `DistributionSystem` idrefs resolve
+- Present: SoftwareInfo, Building, BuildingSummary, Enclosure (infiltration + at least one wall, ceiling, window set), HVAC as either `HeatPump` **or** `HeatingSystem` + `CoolingSystem`, DHW
+- IDs unique; HVAC `DistributionSystem` idrefs resolve when ducts exist (ductless mini-splits omit `HVACDistribution`)
 
 These checks do **not** mean the file passed DOE’s HOMES minimum dataset (HPXML **v4** in the May 2024 procedure — a different, later export).
 
@@ -64,15 +69,43 @@ When `OPENSTUDIO_HPXML_DIR` is set, validate with the files shipped in v1.12.0:
 - `HPXMLtoOpenStudio/resources/hpxml_schema/HPXML.xsd`
 - `HPXMLtoOpenStudio/resources/hpxml_schematron/EPvalidator.sch`
 
-Translate Schematron/XSD messages into `{code, field, message}` for the form. Do not dump raw Ruby backtraces into the contractor UI.
+Translate Schematron/XSD messages into `{code, field, message}` for the form (`app/domain/field_errors.py` keyword map onto `site.*` / `enclosure.*` / `systems.*`). Do not dump raw Ruby backtraces into the contractor UI.
+
+XSD runs via `xmllint` when the tree is present. Schematron runs via `openstudio -e` `OpenStudio::XMLValidator` on `EPvalidator.sch` when the CLI is present (skipped in unit tests that clear `OPENSTUDIO_CLI`).
 
 This is the **EnergyPlus use case**, not the DOE HOMES Schematron (promised in May 2024; public posting unverified as of 2026-11-02).
 
 ## Layer 4 — Engine run
 
-A `succeeded` job means EnergyPlus returned `results_annual.json` we could parse. Warnings in `run.log` are stored, not hidden.
+A `succeeded` job means EnergyPlus returned `results_annual.json` we could parse. Warnings in `run.log` are stored on `energy_results.run_log_warnings`, not hidden. `in.xml` nodes with `dataSource='software'` are stored on `energy_results.software_defaults` and shown in the UI.
 
 A missing engine is **`unavailable`**, not `failed`. Failed is reserved for a present engine that rejected the file or crashed.
+
+## ZIP → TMY3 weather
+
+`app/domain/weather.py` reads the official OS-HPXML 1.12.0 `zipcode_weather_stations.csv` (fixture CSV if the tree is absent). The official station is always stored on `site.official_weather_station`.
+
+| Condition | `weather_source` | What EnergyPlus uses |
+| --- | --- | --- |
+| Official EPW is in `weather/` | `official_mapped` | That station |
+| Official EPW is missing | `nearest_shipped` | Nearest shipped TMY3 by haversine on station lat/lon; labeled |
+| Operator overrode the station | `user` | The user station; official still recorded |
+| No mapping / no EPW | — | Job stays `unavailable`; no invented climate |
+
+Examples on this pin: 33101 official + shipped Miami `722020`; 80202 official is Broomfield `724699` (not shipped) → Denver Intl `725650` labeled `nearest_shipped`. Downloading a missing official TMY3 is still a later gap.
+
+## First-class single-family audit fields (started)
+
+Canonical payload + HPXML emit now include:
+
+- Attic `vented` / `unvented`
+- Foundation `conditioned_basement` \| `unconditioned_basement` \| `slab_on_grade` \| `vented_crawlspace` \| `unvented_crawlspace`
+- Rim joist area and assembly R (omitted on slab-on-grade)
+- Heat pump / mini-split with HSPF2 and SEER2 (`HeatPump`, not furnace + AC). Capacities omitted so OS-HPXML software-defaults them
+- Ductless mini-split (no `HVACDistribution`)
+- Measured duct leakage CFM25 (supply and return)
+
+Crawl / unconditioned basement emit `Floor1` over the foundation plus `Floor2` as the attic floor so the official geometry pattern is preserved. Heat-pump and duct-leakage scenarios re-run EnergyPlus. Dual-fuel, collected appliances/lighting, and occupancy opt-in remain later.
 
 ## What we display after a successful run
 
@@ -82,6 +115,8 @@ A missing engine is **`unavailable`**, not `failed`. Failed is reserved for a pr
 | End uses by fuel | End use | Same. Mutually exclusive as OS-HPXML defines. |
 | HVAC design loads (Btu/h) | Design load | **Preliminary.** Not ACCA-approved Manual J. Not for permit submittal. |
 | Upgrade deltas | Difference | Only if both jobs `succeeded`. Absolute kWh/therm/MBtu, **not** a BPI-2400 percent. |
+| `dataSource='software'` defaults | Software default | From provider `in.xml`. Not a user-entered value. |
+| `run.log` warning lines | Engine warning | Stored next to results; not hidden. |
 
 ## What we must never show as validated savings
 

@@ -33,21 +33,23 @@ Still **not** BPI-2400 qualified. Still **not** an ASHRAE 140 certificate.
 - Reproducible harness under `apps/api/tests/verification/` (HPXML emit + XSD, baseline/post ECM-only, fuel totals, official OS-HPXML `base.xml` / HPWH samples). Versioned artifacts. `ashrae_140_verdict` stays null.
 - First optimizer: attic R-49 + air sealing ACH50 1.5 + HPWH UEF 3.5, all seven combinations, each **re-runs EnergyPlus**. Absolute deltas only.
 
-## Next — weather UX and validation translation
+## Now also — weather UX, validation translation, first-class audit fields (this milestone)
 
-- ZIP → TMY3 station mapping using OS-HPXML’s `zipcode_weather_stations.csv` beyond the default Denver station
-- Surface `in.xml` software defaults in the UI (`dataSource='software'`)
-- Translate XSD/Schematron errors onto form fields
-- Store `run.log` warnings next to results
+- ZIP → TMY3 via official OS-HPXML `zipcode_weather_stations.csv`. Official station is always stored. If that EPW is not in the 1.12.0 `weather/` folder, the nearest shipped TMY3 is used and labeled (`nearest_shipped`). Example: 33101 → Miami TMY3 (official); 80202 official is Broomfield, shipped fallback is Denver Intl.
+- `in.xml` `dataSource='software'` defaults are parsed and shown next to results. Payload `data_source` includes `software` for appliances/lighting.
+- XSD (xmllint) and Schematron (OpenStudio XMLValidator when the CLI is present) errors are mapped onto form fields (`{code, field, message}`).
+- `run.log` warning lines are stored on `energy_results.run_log_warnings`.
+- First-class fields: vented/unvented attic; conditioned/unconditioned basement; slab; vented/unvented crawl; rim joist area/R; heat pump and mini-split (HSPF2/SEER2); ductless; measured duct CFM25. Heat-pump and duct-leakage scenarios re-run EnergyPlus.
 
-## Then — a complete single-family audit model
+Still **not** DOE / BPI / ACCA approved.
 
-- More enclosure: vented attics, crawlspaces, slab vs basement, rim joists as first-class fields
-- Heat pumps (HSPF2/SEER2), dual fuel, ductless
-- Duct leakage (CFM25) as a measured input
-- Appliances and lighting as collected fields, not only defaults
+## Then — remaining single-family audit model
+
+- Dual-fuel heat pumps as a first-class measure
+- Appliances and lighting as collected fields, not only software defaults
 - Stochastic occupancy as an explicit opt-in
 - Photo attachments via `JobPhotoPort` + `PreSiteProFileAdapter` (no PreSite repo clone)
+- Download missing official TMY3 EPWs instead of nearest-shipped fallback
 
 ## Then — remaining BPI-2400 process (still not “approved”)
 
@@ -107,3 +109,5 @@ Do not scrape AHRI, NEEP bulk lists, MAEDbS, or utility portals.
 - A PR from a **new** `main` branch contains a runnable slice + tests + changelog
 - A reviewer can create a home, see valid HPXML, and see either real EnergyPlus numbers or a clear unavailable state — never a made-up kWh
 - Utility history, residual scaffolding, and package re-runs are on the same PR #3 branch, labeled preliminary / not certified
+- ZIP maps to an official TMY3 (fallback labeled when the official EPW is not shipped); software defaults and `run.log` warnings appear next to results; XSD/Schematron errors map onto form fields
+- Heat-pump (HSPF2/SEER2) and measured duct-leakage (CFM25) scenarios re-run EnergyPlus and persist parsed kWh — still not DOE / BPI / ACCA

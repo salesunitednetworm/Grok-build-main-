@@ -65,6 +65,8 @@ class EnergyResultOut(OrmModel):
     heating_design_load_btuh: float | None
     cooling_sensible_design_load_btuh: float | None
     loads_qualification: str
+    run_log_warnings: list[str] | None = None
+    software_defaults: list[dict[str, str]] | None = None
     created_at: datetime
 
 
@@ -99,6 +101,24 @@ class ScenarioCreate(BaseModel):
     name: str = "Attic insulation upgrade"
     measure_type: str = "attic_insulation"
     ceiling_assembly_r: float = Field(ge=1, le=80, default=49.0)
+    heating_efficiency_hspf2: float = Field(ge=5, le=16, default=8.5)
+    cooling_efficiency_seer2: float = Field(ge=8, le=40, default=16.0)
+    ductless: bool = False
+    duct_leakage_supply_cfm25: float = Field(ge=0, le=2000, default=40.0)
+    duct_leakage_return_cfm25: float = Field(ge=0, le=2000, default=15.0)
+
+
+class WeatherOut(BaseModel):
+    zipcode: str
+    city: str
+    state_code: str
+    iecc_zone: str
+    official_station: str
+    official_station_name: str
+    used_station: str
+    weather_source: str
+    epw_available: bool
+    notes: str
 
 
 class ComparisonOut(OrmModel):

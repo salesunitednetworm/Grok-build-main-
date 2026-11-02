@@ -9,7 +9,7 @@ HPXML_NS = "http://hpxmlonline.com/2025/12"
 HPXML_SCHEMA_VERSION = "5.0"
 HPXML_SCHEMA_LABEL = "5.0-rc1"
 SOFTWARE_NAME = "Grok Build Home Energy"
-SOFTWARE_VERSION = "0.2.0"
+SOFTWARE_VERSION = "0.3.0"
 
 ET.register_namespace("", HPXML_NS)
 
@@ -99,6 +99,32 @@ def _climate(details: ET.Element, model: CanonicalBuilding) -> None:
     _el("EPWFilePath", ext, f"{model.site.weather_station}.epw")
 
 
+def _attic_space(model: CanonicalBuilding) -> str:
+    return "attic - vented" if model.enclosure.attic_type == "vented" else "attic - unvented"
+
+
+def _foundation_space(model: CanonicalBuilding) -> str:
+    return {
+        "conditioned_basement": "basement - conditioned",
+        "unconditioned_basement": "basement - unconditioned",
+        "vented_crawlspace": "crawlspace - vented",
+        "unvented_crawlspace": "crawlspace - unvented",
+        "slab_on_grade": "conditioned space",
+    }[model.enclosure.foundation_type]
+
+
+def _separated_foundation(model: CanonicalBuilding) -> bool:
+    return model.enclosure.foundation_type in {
+        "unconditioned_basement",
+        "vented_crawlspace",
+        "unvented_crawlspace",
+    }
+
+
+def _is_heat_pump(model: CanonicalBuilding) -> bool:
+    return model.systems.heating_type in {"heat pump", "mini-split"}
+
+
 def _enclosure(details: ET.Element, model: CanonicalBuilding) -> None:
     enc = _el("Enclosure", details)
     air = _el("AirInfiltration", enc)
@@ -114,31 +140,45 @@ def _enclosure(details: ET.Element, model: CanonicalBuilding) -> None:
     _el("SystemIdentifier", attic, id="Attic1")
     attic_type = _el("AtticType", attic)
     attic_inner = _el("Attic", attic_type)
-    _el("Vented", attic_inner, "false")
+    _el("Vented", attic_inner, "true" if model.enclosure.attic_type == "vented" else "false")
     _el("AttachedToRoof", attic, idref="Roof1")
     _el("AttachedToWall", attic, idref="Wall2")
-    _el("AttachedToFloor", attic, idref="Floor1")
+    ceiling_id = "Floor2" if _separated_foundation(model) else "Floor1"
+    _el("AttachedToFloor", attic, idref=ceiling_id)
 
     foundations = _el("Foundations", enc)
     foundation = _el("Foundation", foundations)
     _el("SystemIdentifier", foundation, id="Foundation1")
     ftype = _el("FoundationType", foundation)
+    interior_found = _foundation_space(model)
     if model.enclosure.foundation_type == "conditioned_basement":
         basement = _el("Basement", ftype)
         _el("Conditioned", basement, "true")
         _el("AttachedToRimJoist", foundation, idref="RimJoist1")
         _el("AttachedToFoundationWall", foundation, idref="FoundationWall1")
         _el("AttachedToSlab", foundation, idref="Slab1")
-        interior_found = "basement - conditioned"
+    elif model.enclosure.foundation_type == "unconditioned_basement":
+        basement = _el("Basement", ftype)
+        _el("Conditioned", basement, "false")
+        _el("AttachedToRimJoist", foundation, idref="RimJoist1")
+        _el("AttachedToFoundationWall", foundation, idref="FoundationWall1")
+        _el("AttachedToFloor", foundation, idref="Floor1")
+        _el("AttachedToSlab", foundation, idref="Slab1")
+    elif model.enclosure.foundation_type in {"vented_crawlspace", "unvented_crawlspace"}:
+        crawl = _el("Crawlspace", ftype)
+        _el("Vented", crawl, "true" if model.enclosure.foundation_type == "vented_crawlspace" else "false")
+        _el("AttachedToRimJoist", foundation, idref="RimJoist1")
+        _el("AttachedToFoundationWall", foundation, idref="FoundationWall1")
+        _el("AttachedToFloor", foundation, idref="Floor1")
+        _el("AttachedToSlab", foundation, idref="Slab1")
     else:
         _el("SlabOnGrade", ftype)
         _el("AttachedToSlab", foundation, idref="Slab1")
-        interior_found = "conditioned space"
 
     roofs = _el("Roofs", enc)
     roof = _el("Roof", roofs)
     _el("SystemIdentifier", roof, id="Roof1")
-    _el("InteriorAdjacentTo", roof, "attic - unvented")
+    _el("InteriorAdjacentTo", roof, _attic_space(model))
     _el("Area", roof, f"{model.enclosure.roof_area_ft2:.1f}")
     _el("RoofType", roof, "asphalt or fiberglass shingles")
     _el("RoofColor", roof, "light")
@@ -147,18 +187,18 @@ def _enclosure(details: ET.Element, model: CanonicalBuilding) -> None:
     _el("SystemIdentifier", roof_ins, id="Roof1Insulation")
     _el("AssemblyEffectiveRValue", roof_ins, "2.3")
 
-    if model.enclosure.foundation_type == "conditioned_basement":
+    if model.enclosure.foundation_type != "slab_on_grade":
         rims = _el("RimJoists", enc)
         rim = _el("RimJoist", rims)
         _el("SystemIdentifier", rim, id="RimJoist1")
         _el("ExteriorAdjacentTo", rim, "outside")
         _el("InteriorAdjacentTo", rim, interior_found)
-        _el("Area", rim, "115.6")
+        _el("Area", rim, f"{model.enclosure.rim_joist_area_ft2:.1f}")
         _el("Siding", rim, "wood siding")
         _el("Color", rim, "medium")
         rim_ins = _el("Insulation", rim)
         _el("SystemIdentifier", rim_ins, id="RimJoist1Insulation")
-        _el("AssemblyEffectiveRValue", rim_ins, "13.9")
+        _el("AssemblyEffectiveRValue", rim_ins, f"{model.enclosure.rim_joist_assembly_r:.1f}")
 
     walls = _el("Walls", enc)
     wall = _el("Wall", walls)
@@ -177,7 +217,7 @@ def _enclosure(details: ET.Element, model: CanonicalBuilding) -> None:
     gable = _el("Wall", walls)
     _el("SystemIdentifier", gable, id="Wall2")
     _el("ExteriorAdjacentTo", gable, "outside")
-    _el("InteriorAdjacentTo", gable, "attic - unvented")
+    _el("InteriorAdjacentTo", gable, _attic_space(model))
     _el("AtticWallType", gable, "gable")
     gable_type = _el("WallType", gable)
     _el("WoodStud", gable_type)
@@ -188,16 +228,17 @@ def _enclosure(details: ET.Element, model: CanonicalBuilding) -> None:
     _el("SystemIdentifier", gable_ins, id="GableInsulation")
     _el("AssemblyEffectiveRValue", gable_ins, "4.0")
 
-    if model.enclosure.foundation_type == "conditioned_basement":
+    if model.enclosure.foundation_type != "slab_on_grade":
+        crawl = model.enclosure.foundation_type in {"vented_crawlspace", "unvented_crawlspace"}
         fwalls = _el("FoundationWalls", enc)
         fwall = _el("FoundationWall", fwalls)
         _el("SystemIdentifier", fwall, id="FoundationWall1")
         _el("ExteriorAdjacentTo", fwall, "ground")
         _el("InteriorAdjacentTo", fwall, interior_found)
         _el("Type", fwall, "solid concrete")
-        _el("Height", fwall, "8.0")
-        _el("Area", fwall, "1200.0")
-        _el("DepthBelowGrade", fwall, "7.0")
+        _el("Height", fwall, "4.0" if crawl else "8.0")
+        _el("Area", fwall, "600.0" if crawl else "1200.0")
+        _el("DepthBelowGrade", fwall, "3.0" if crawl else "7.0")
         fw_ins = _el("Insulation", fwall)
         _el("SystemIdentifier", fw_ins, id="FoundationWall1Insulation")
         layer = _el("Layer", fw_ins)
@@ -208,16 +249,33 @@ def _enclosure(details: ET.Element, model: CanonicalBuilding) -> None:
         _el("NominalRValue", layer2, "0.0")
 
     floors = _el("Floors", enc)
+    if _separated_foundation(model):
+        over = _el("Floor", floors)
+        _el("SystemIdentifier", over, id="Floor1")
+        _el("ExteriorAdjacentTo", over, interior_found)
+        _el("InteriorAdjacentTo", over, "conditioned space")
+        _el("FloorOrCeiling", over, "floor")
+        over_type = _el("FloorType", over)
+        _el("WoodFrame", over_type)
+        _el("Area", over, f"{model.enclosure.ceiling_area_ft2:.1f}")
+        over_ins = _el("Insulation", over)
+        _el("SystemIdentifier", over_ins, id="Floor1Insulation")
+        _el("AssemblyEffectiveRValue", over_ins, "19.4")
+        ceiling_id = "Floor2"
+        ceiling_ins_id = "Floor2Insulation"
+    else:
+        ceiling_id = "Floor1"
+        ceiling_ins_id = "Floor1Insulation"
     ceiling = _el("Floor", floors)
-    _el("SystemIdentifier", ceiling, id="Floor1")
-    _el("ExteriorAdjacentTo", ceiling, "attic - unvented")
+    _el("SystemIdentifier", ceiling, id=ceiling_id)
+    _el("ExteriorAdjacentTo", ceiling, _attic_space(model))
     _el("InteriorAdjacentTo", ceiling, "conditioned space")
     _el("FloorOrCeiling", ceiling, "ceiling")
     floor_type = _el("FloorType", ceiling)
     _el("WoodFrame", floor_type)
     _el("Area", ceiling, f"{model.enclosure.ceiling_area_ft2:.1f}")
     ceil_ins = _el("Insulation", ceiling)
-    _el("SystemIdentifier", ceil_ins, id="Floor1Insulation")
+    _el("SystemIdentifier", ceil_ins, id=ceiling_ins_id)
     _el("AssemblyEffectiveRValue", ceil_ins, f"{model.enclosure.ceiling_assembly_r:.1f}")
 
     slabs = _el("Slabs", enc)
@@ -269,64 +327,101 @@ def _systems(details: ET.Element, model: CanonicalBuilding) -> None:
     hvac = _el("HVAC", systems)
     plant = _el("HVACPlant", hvac)
     primary = _el("PrimarySystems", plant)
-    _el("PrimaryHeatingSystem", primary, idref="HeatingSystem1")
-    _el("PrimaryCoolingSystem", primary, idref="CoolingSystem1")
+    if _is_heat_pump(model):
+        _el("PrimaryHeatingSystem", primary, idref="HeatPump1")
+        _el("PrimaryCoolingSystem", primary, idref="HeatPump1")
+        heat_pump = _el("HeatPump", plant)
+        _el("SystemIdentifier", heat_pump, id="HeatPump1")
+        if not model.systems.ductless:
+            _el("DistributionSystem", heat_pump, idref="HVACDistribution1")
+        _el(
+            "HeatPumpType",
+            heat_pump,
+            "mini-split" if model.systems.heating_type == "mini-split" else "air-to-air",
+        )
+        _el("HeatPumpFuel", heat_pump, "electricity")
+        _el(
+            "CompressorType",
+            heat_pump,
+            "variable speed" if model.systems.heating_type == "mini-split" else "single stage",
+        )
+        if model.systems.heating_type != "mini-split":
+            _el("BackupType", heat_pump, "integrated")
+            _el("BackupSystemFuel", heat_pump, "electricity")
+            backup = _el("BackupAnnualHeatingEfficiency", heat_pump)
+            _el("Units", backup, "Percent")
+            _el("Value", backup, "1.0")
+        _el("FractionHeatLoadServed", heat_pump, "1.0")
+        _el("FractionCoolLoadServed", heat_pump, "1.0")
+        ceff = _el("AnnualCoolingEfficiency", heat_pump)
+        _el("Units", ceff, "SEER2")
+        _el("Value", ceff, f"{model.systems.cooling_efficiency_seer2:.1f}")
+        heff = _el("AnnualHeatingEfficiency", heat_pump)
+        _el("Units", heff, "HSPF2")
+        _el("Value", heff, f"{model.systems.heating_efficiency_hspf2:.1f}")
+    else:
+        _el("PrimaryHeatingSystem", primary, idref="HeatingSystem1")
+        _el("PrimaryCoolingSystem", primary, idref="CoolingSystem1")
+        heating = _el("HeatingSystem", plant)
+        _el("SystemIdentifier", heating, id="HeatingSystem1")
+        _el("DistributionSystem", heating, idref="HVACDistribution1")
+        htype = _el("HeatingSystemType", heating)
+        _el("Furnace", htype)
+        _el("HeatingSystemFuel", heating, model.systems.heating_fuel)
+        eff = _el("AnnualHeatingEfficiency", heating)
+        _el("Units", eff, "AFUE")
+        _el("Value", eff, f"{model.systems.heating_efficiency_afue:.2f}")
+        _el("FractionHeatLoadServed", heating, "1.0")
 
-    heating = _el("HeatingSystem", plant)
-    _el("SystemIdentifier", heating, id="HeatingSystem1")
-    _el("DistributionSystem", heating, idref="HVACDistribution1")
-    htype = _el("HeatingSystemType", heating)
-    _el("Furnace", htype)
-    _el("HeatingSystemFuel", heating, model.systems.heating_fuel)
-    eff = _el("AnnualHeatingEfficiency", heating)
-    _el("Units", eff, "AFUE")
-    _el("Value", eff, f"{model.systems.heating_efficiency_afue:.2f}")
-    _el("FractionHeatLoadServed", heating, "1.0")
-
-    cooling = _el("CoolingSystem", plant)
-    _el("SystemIdentifier", cooling, id="CoolingSystem1")
-    _el("DistributionSystem", cooling, idref="HVACDistribution1")
-    _el("CoolingSystemType", cooling, model.systems.cooling_type)
-    _el("CoolingSystemFuel", cooling, "electricity")
-    _el("CompressorType", cooling, "single stage")
-    _el("FractionCoolLoadServed", cooling, "1.0")
-    ceff = _el("AnnualCoolingEfficiency", cooling)
-    _el("Units", ceff, "SEER2")
-    _el("Value", ceff, f"{model.systems.cooling_efficiency_seer2:.1f}")
+        cooling = _el("CoolingSystem", plant)
+        _el("SystemIdentifier", cooling, id="CoolingSystem1")
+        _el("DistributionSystem", cooling, idref="HVACDistribution1")
+        _el("CoolingSystemType", cooling, model.systems.cooling_type)
+        _el("CoolingSystemFuel", cooling, "electricity")
+        _el("CompressorType", cooling, "single stage")
+        _el("FractionCoolLoadServed", cooling, "1.0")
+        ceff = _el("AnnualCoolingEfficiency", cooling)
+        _el("Units", ceff, "SEER2")
+        _el("Value", ceff, f"{model.systems.cooling_efficiency_seer2:.1f}")
 
     control = _el("HVACControl", hvac)
     _el("SystemIdentifier", control, id="HVACControl1")
     _el("SetpointTempHeatingSeason", control, f"{model.systems.heating_setpoint_f:.1f}")
     _el("SetpointTempCoolingSeason", control, f"{model.systems.cooling_setpoint_f:.1f}")
 
-    dist = _el("HVACDistribution", hvac)
-    _el("SystemIdentifier", dist, id="HVACDistribution1")
-    dtype = _el("DistributionSystemType", dist)
-    air = _el("AirDistribution", dtype)
-    _el("AirDistributionType", air, "regular velocity")
-    for duct_type, cfm in (("supply", "81.0"), ("return", "27.0")):
-        leak = _el("DuctLeakageMeasurement", air)
-        _el("DuctType", leak, duct_type)
-        leakage = _el("DuctLeakage", leak)
-        _el("Units", leakage, "CFM25")
-        _el("Value", leakage, cfm)
-        _el("TotalOrToOutside", leakage, "to outside")
-    for idx, (duct_type, r_value, location, fraction) in enumerate(
-        (
-            ("supply", "4.0", "attic - unvented", "0.75"),
-            ("return", "4.0", "attic - unvented", "0.75"),
-            ("supply", "0.0", "conditioned space", "0.25"),
-            ("return", "0.0", "conditioned space", "0.25"),
-        ),
-        start=1,
-    ):
-        ducts = _el("Ducts", air)
-        _el("SystemIdentifier", ducts, id=f"Ducts{idx}")
-        _el("DuctType", ducts, duct_type)
-        _el("DuctInsulationRValue", ducts, r_value)
-        _el("DuctLocation", ducts, location)
-        _el("FractionDuctArea", ducts, fraction)
-    _el("ConditionedFloorAreaServed", dist, f"{model.construction.conditioned_floor_area_ft2:.1f}")
+    if not model.systems.ductless:
+        dist = _el("HVACDistribution", hvac)
+        _el("SystemIdentifier", dist, id="HVACDistribution1")
+        dtype = _el("DistributionSystemType", dist)
+        air = _el("AirDistribution", dtype)
+        _el("AirDistributionType", air, "regular velocity")
+        for duct_type, cfm in (
+            ("supply", model.systems.duct_leakage_supply_cfm25),
+            ("return", model.systems.duct_leakage_return_cfm25),
+        ):
+            leak = _el("DuctLeakageMeasurement", air)
+            _el("DuctType", leak, duct_type)
+            leakage = _el("DuctLeakage", leak)
+            _el("Units", leakage, "CFM25")
+            _el("Value", leakage, f"{cfm:.1f}")
+            _el("TotalOrToOutside", leakage, "to outside")
+        attic = _attic_space(model)
+        for idx, (duct_type, r_value, location, fraction) in enumerate(
+            (
+                ("supply", "4.0", attic, "0.75"),
+                ("return", "4.0", attic, "0.75"),
+                ("supply", "0.0", "conditioned space", "0.25"),
+                ("return", "0.0", "conditioned space", "0.25"),
+            ),
+            start=1,
+        ):
+            ducts = _el("Ducts", air)
+            _el("SystemIdentifier", ducts, id=f"Ducts{idx}")
+            _el("DuctType", ducts, duct_type)
+            _el("DuctInsulationRValue", ducts, r_value)
+            _el("DuctLocation", ducts, location)
+            _el("FractionDuctArea", ducts, fraction)
+        _el("ConditionedFloorAreaServed", dist, f"{model.construction.conditioned_floor_area_ft2:.1f}")
 
     water = _el("WaterHeating", systems)
     wh = _el("WaterHeatingSystem", water)
@@ -444,7 +539,9 @@ def inspect_hpxml(xml_text: str) -> list[dict[str, str]]:
             errors.append({"code": "missing", "field": name, "message": f"{name} is required"})
     if "BuildingSummary" not in xml_text or "Enclosure" not in xml_text:
         errors.append({"code": "missing", "field": "BuildingDetails", "message": "summary/enclosure missing"})
-    if "<HeatingSystem>" not in xml_text or "<CoolingSystem>" not in xml_text:
+    has_furnace = "<HeatingSystem>" in xml_text and "<CoolingSystem>" in xml_text
+    has_heat_pump = "<HeatPump>" in xml_text
+    if not has_furnace and not has_heat_pump:
         errors.append({"code": "missing", "field": "systems.hvac", "message": "heating and cooling are required"})
     if "<WaterHeatingSystem>" not in xml_text:
         errors.append({"code": "missing", "field": "systems.dhw", "message": "water heating is required"})

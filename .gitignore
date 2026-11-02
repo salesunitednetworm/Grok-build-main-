@@ -16,6 +16,8 @@ dist/
 .turbo/
 
 data/
+!apps/api/app/data/
+!apps/api/app/data/**
 *.db
 *.sqlite3
 .env

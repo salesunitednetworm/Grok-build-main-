@@ -133,6 +133,8 @@ class EnergyResult(Base):
     cooling_sensible_design_load_btuh: Mapped[float | None] = mapped_column(Float)
     loads_qualification: Mapped[str] = mapped_column(String(32), nullable=False, default="preliminary")
     raw_annual: Mapped[dict | None] = mapped_column(JSON)
+    run_log_warnings: Mapped[list | None] = mapped_column(JSON)
+    software_defaults: Mapped[list | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     job: Mapped[SimulationJob] = relationship(back_populates="energy_result")

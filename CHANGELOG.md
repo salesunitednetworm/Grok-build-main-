@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-11-02
+
+- ZIP → TMY3 from official OS-HPXML `zipcode_weather_stations.csv`. Official station is always stored. Missing official EPWs use the nearest shipped TMY3 and are labeled `nearest_shipped` (80202 official is Broomfield; shipped fallback is Denver Intl). 33101 maps to Miami TMY3.
+- Parse `in.xml` `dataSource='software'` defaults and `run.log` warnings onto `energy_results`; show both in the UI.
+- Translate XSD (`xmllint`) and Schematron (`OpenStudio::XMLValidator` when the CLI is present) onto form fields.
+- First-class audit fields: vented/unvented attic; conditioned/unconditioned basement, slab, vented/unvented crawl; rim joists; heat pump and mini-split (HSPF2/SEER2); ductless; measured duct CFM25.
+- Scenarios `heat_pump` and `duct_leakage` generate real HPXML and re-run EnergyPlus. No invented kWh. Still not DOE / BPI / ACCA.
+
 ## 0.2.0 — 2026-11-02
 
 - BPI-2400 *scaffolding*: utility history, 330-day quality gate, residuals vs simulated annual fuels, permitted setpoint adjustments only. Models labeled `uncalibrated` or `calibrated` with `preliminary_not_certified`. Never `bpi_2400_calibrated`.

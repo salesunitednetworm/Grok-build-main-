@@ -44,7 +44,7 @@ A dwelling we are modeling. Not a CRM deal.
 | `address_line1` | TEXT | |
 | `city` | TEXT | |
 | `state_code` | CHAR(2) | HPXML `StateCode` |
-| `postal_code` | TEXT | ZIP; later maps to TMY3 |
+| `postal_code` | TEXT | ZIP; maps to TMY3 via OS-HPXML `zipcode_weather_stations.csv` |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -130,6 +130,8 @@ Created **only** when `results_annual.json` (or equivalent) was parsed.
 | `cooling_sensible_design_load_btuh` | DOUBLE PRECISION | **Preliminary** |
 | `loads_qualification` | TEXT NOT NULL | Always `preliminary` in v1 |
 | `raw_annual` | JSONB | Full parsed annual object |
+| `run_log_warnings` | JSONB | Warning lines from provider `run.log` |
+| `software_defaults` | JSONB | `in.xml` nodes with `dataSource='software'` |
 | `created_at` | TIMESTAMPTZ | |
 
 Conversion constants are stored in code, not guessed per row. If a key is missing from the provider file, the column stays NULL.
@@ -143,11 +145,11 @@ Conversion constants are stored in code, not guessed per row. If a key is missin
 | `baseline_model_id` | UUID FK | |
 | `upgraded_model_id` | UUID FK | |
 | `name` | TEXT NOT NULL | |
-| `measure_type` | TEXT NOT NULL | v1: `attic_insulation` |
-| `measure_payload` | JSONB NOT NULL | e.g. `{ "ceiling_assembly_r": 49 }` |
+| `measure_type` | TEXT NOT NULL | `attic_insulation` \| `heat_pump` \| `duct_leakage` |
+| `measure_payload` | JSONB NOT NULL | e.g. `{ "ceiling_assembly_r": 49 }` or HSPF2/SEER2 or CFM25 |
 | `created_at` | TIMESTAMPTZ | |
 
-v1 applies **one** measure. The upgraded payload equals the baseline except that field.
+Each measure clones the baseline and changes only those fields, then re-runs EnergyPlus.
 
 ### `comparisons`
 
@@ -215,7 +217,10 @@ JSONB, validated by Pydantic before write.
     "postal_code": "80202",
     "azimuth_front": 180,
     "iecc_zone": "5B",
-    "weather_station": "USA_CO_Denver.Intl.AP.725650_TMY3"
+    "weather_station": "USA_CO_Denver.Intl.AP.725650_TMY3",
+    "official_weather_station": "USA_CO_Boulder-Broomfield-Jefferson.County.AP.724699_TMY3",
+    "weather_source": "nearest_shipped",
+    "weather_epw_available": true
   },
   "construction": {
     "facility_type": "single-family detached",
@@ -234,7 +239,10 @@ JSONB, validated by Pydantic before write.
     "ceiling_area_ft2": 1350,
     "ceiling_assembly_r": 39.6,
     "roof_area_ft2": 1509.3,
+    "attic_type": "unvented",
     "foundation_type": "conditioned_basement",
+    "rim_joist_area_ft2": 115.6,
+    "rim_joist_assembly_r": 13.9,
     "window_u": 0.35,
     "window_shgc": 0.44,
     "window_area_by_azimuth": { "0": 108, "90": 72, "180": 108, "270": 72 },
@@ -245,22 +253,31 @@ JSONB, validated by Pydantic before write.
     "heating_type": "furnace",
     "heating_fuel": "natural gas",
     "heating_efficiency_afue": 0.92,
+    "heating_efficiency_hspf2": 7.0,
     "cooling_type": "central air conditioner",
     "cooling_efficiency_seer2": 13.4,
     "dhw_type": "storage water heater",
     "dhw_fuel": "electricity",
     "dhw_uef": 0.94,
     "heating_setpoint_f": 68,
-    "cooling_setpoint_f": 78
+    "cooling_setpoint_f": 78,
+    "ductless": false,
+    "duct_leakage_supply_cfm25": 81,
+    "duct_leakage_return_cfm25": 27
   },
   "data_source": {
     "ach50": "user",
-    "heating_efficiency_afue": "user"
+    "heating_efficiency_afue": "user",
+    "cooling_efficiency_seer2": "user",
+    "rim_joist_area_ft2": "user",
+    "duct_leakage_supply_cfm25": "user",
+    "appliances": "software",
+    "lighting": "software"
   }
 }
 ```
 
-`data_source` values: `user` | `default` | `measured`. Defaults we inject (appliances, lighting groups) are `default` and must surface in the UI later (`in.xml` `dataSource='software'` is the provider-side equivalent).
+`data_source` values: `user` | `default` | `measured` | `software`. Payload `software` marks appliances/lighting we do not collect yet. After a successful run, provider `in.xml` nodes with `dataSource='software'` are stored on `energy_results.software_defaults` and shown in the UI. Duct-leakage measures mark CFM25 as `measured`.
 
 ## Indexes
 

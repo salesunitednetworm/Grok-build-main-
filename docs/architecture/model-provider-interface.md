@@ -83,11 +83,11 @@ Required instance content for the EnergyPlus use case (from OS-HPXML docs + offi
 - `Building` / `Site` / `ProjectStatus`
 - `BuildingSummary` (facility type, CFA, stories, bedrooms, volume)
 - `ClimateandRiskZones` (IECC zone and/or weather station / ZIP)
-- `Enclosure`: ACH50, attic, foundation, walls, ceiling/floor, windows, doors
-- `Systems`: HVAC plant + control + distribution, DHW
-- `Appliances`, `Lighting`, `MiscLoads` — defaults allowed, tagged `default` in our payload
+- `Enclosure`: ACH50, attic (vented/unvented), foundation (basement / slab / crawl), rim joists, walls, ceiling/floor, windows, doors
+- `Systems`: furnace + AC **or** `HeatPump` (air-to-air / mini-split with HSPF2 and SEER2); ducted `HVACDistribution` with CFM25 or omitted when ductless; DHW
+- `Appliances`, `Lighting`, `MiscLoads` — defaults allowed, tagged `software` in our payload until collected
 
-Capacities are omitted so the adapter can autosize. Autosized values appear on provider `in.xml` with `dataSource='software'`.
+Capacities are omitted so the adapter can autosize. Autosized values appear on provider `in.xml` with `dataSource='software'` and are parsed into `energy_results.software_defaults`.
 
 ### validate_input
 
@@ -100,7 +100,7 @@ Capacities are omitted so the adapter can autosize. Autosized values appear on p
 | --- | --- |
 | `OPENSTUDIO_CLI` executable | `unavailable` — “OpenStudio 3.11.0 CLI not installed” |
 | `OPENSTUDIO_HPXML_DIR/workflow/run_simulation.rb` | `unavailable` — “OpenStudio-HPXML v1.12.0 tree not installed” |
-| Weather (EPW or ZIP mapping inside OS-HPXML) | `unavailable` or provider `failed` from `run.log` — do not invent climate |
+| Weather (EPW after ZIP→TMY3 mapping) | `unavailable` or provider `failed` from `run.log` — do not invent climate. Official station is always reported; nearest shipped TMY3 is labeled when the official EPW is not in `weather/`. |
 
 On success, collect at least:
 
@@ -111,7 +111,7 @@ On success, collect at least:
 | `results_annual.json` | `results_annual_json` |
 | `run.log` | `run_log` |
 
-`results_design_load_details.*` may be stored later. Values from it stay **preliminary**.
+Warning lines from `run.log` are stored on the energy row. `results_design_load_details.*` may be stored later. Values from it stay **preliminary**.
 
 ### parse_annual_results
 

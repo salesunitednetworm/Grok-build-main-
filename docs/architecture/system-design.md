@@ -80,23 +80,24 @@ PreSite Pro, Zoho, HighLevel, CompanyCam, AHRI, and Green Button **Connect My Da
 ## Vertical-slice flow
 
 1. **Create Home** — name, address, ZIP, state.
-2. **Enter Building Data** — canonical payload: geometry, enclosure, infiltration, HVAC, DHW. Appliances/lighting use documented OS-HPXML-compatible defaults until we collect them.
-3. **Validate** — domain rules first (required fields, physical bounds). Provider-level XSD/Schematron when the OS-HPXML tree is present.
+2. **Enter Building Data** — canonical payload: geometry, enclosure (attic / foundation / rim joists), infiltration, HVAC (furnace or heat pump / mini-split), measured duct CFM25, DHW. Appliances/lighting use OS-HPXML software defaults until we collect them.
+3. **Validate** — domain rules first (required fields, physical bounds). Provider-level XSD/Schematron when the OS-HPXML tree is present; errors map onto form fields.
 4. **Generate HPXML** — our author (not `BuildResidentialHPXML`, which is a subset). Persist XML as an artifact.
-5. **Run simulation** — worker claims a job. If `openstudio` + OS-HPXML 1.12.0 + weather are present, run:
+5. **Map weather** — ZIP → official TMY3 from `zipcode_weather_stations.csv`. If that EPW is not shipped, use the nearest shipped TMY3 and label `nearest_shipped`.
+6. **Run simulation** — worker claims a job. If `openstudio` + OS-HPXML 1.12.0 + weather are present, run:
 
    ```
    openstudio workflow/run_simulation.rb -x <file.xml> -o <run_dir> --output-format json
    ```
 
    If they are not present, mark the job **`unavailable`**. Do not write energy rows.
-6. **Store artifacts** — input HPXML, `in.xml` / `results_annual.json` / `run.log` when produced, plus job metadata.
-7. **Display energy results** — parsed Fuel Use and End Use from `results_annual.json` only. Design loads shown as **preliminary**.
-8. **Compare one upgrade** — copy the validated model, apply one measure (default: attic/ceiling insulation), generate a second HPXML, run a second job. Deltas exist only when **both** jobs have parsed EnergyPlus results.
+7. **Store artifacts** — input HPXML, `in.xml` / `results_annual.json` / `run.log` when produced, plus job metadata. Persist `run.log` warnings and `in.xml` `dataSource='software'` defaults on the energy row.
+8. **Display energy results** — parsed Fuel Use and End Use from `results_annual.json` only. Design loads shown as **preliminary**. Software defaults and engine warnings sit next to the numbers.
+9. **Compare upgrades** — copy the validated model, apply one measure (`attic_insulation`, `heat_pump`, or `duct_leakage`), generate a second HPXML, run a second job. Deltas exist only when **both** jobs have parsed EnergyPlus results.
 
 ## Simulation-unavailable path
 
-This Cloud Agent host does not ship OpenStudio 3.11.0. Local machines and Compose may omit the engine too.
+This Cloud Agent host now has the pinned engine (`scripts/install-openstudio.sh`). Local machines and Compose may still omit it.
 
 When the CLI, measure tree, or weather files are missing:
 
@@ -146,9 +147,9 @@ On Ubuntu 24.04 x86_64, `scripts/install-openstudio.sh` places:
 
 - CLI: `/usr/local/openstudio-3.11.0/bin/openstudio` (reports `3.11.0+241b8abb4d`)
 - EnergyPlus: `/usr/local/openstudio-3.11.0/EnergyPlus/energyplus` (`25.2.0-cf7368216c`)
-- Measures + weather: `/opt/OpenStudio-HPXML-1.12.0` (includes `weather/USA_CO_Denver.Intl.AP.725650_TMY3.epw`)
+- Measures + weather: `/opt/OpenStudio-HPXML-1.12.0` (shipped TMY3s include Miami, Phoenix, Portland, Denver Intl, Colorado Springs; not every official ZIP station)
 
-A separate energyplus.net TMY3 zip is not required for the Denver default home. Pins did not change.
+ZIP mapping uses `HPXMLtoOpenStudio/resources/data/zipcode_weather_stations.csv`. Official station is always stored; missing official EPWs fall back to the nearest shipped TMY3 and are labeled. Pins did not change.
 
 Without Docker, the API accepts `DATABASE_URL` (PostgreSQL) or a local SQLite file for unit tests only. Production and Compose use PostgreSQL.
 

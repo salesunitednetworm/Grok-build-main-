@@ -18,6 +18,9 @@ export type BuildingPayload = {
     azimuth_front: number;
     iecc_zone: string;
     weather_station: string;
+    official_weather_station?: string | null;
+    weather_source?: string;
+    weather_epw_available?: boolean;
   };
   construction: {
     facility_type: string;
@@ -36,7 +39,10 @@ export type BuildingPayload = {
     ceiling_area_ft2: number;
     ceiling_assembly_r: number;
     roof_area_ft2: number;
+    attic_type?: string;
     foundation_type: string;
+    rim_joist_area_ft2?: number;
+    rim_joist_assembly_r?: number;
     window_u: number;
     window_shgc: number;
     window_area_by_azimuth: Record<string, number>;
@@ -47,6 +53,7 @@ export type BuildingPayload = {
     heating_type: string;
     heating_fuel: string;
     heating_efficiency_afue: number;
+    heating_efficiency_hspf2?: number;
     cooling_type: string;
     cooling_efficiency_seer2: number;
     dhw_type: string;
@@ -54,6 +61,9 @@ export type BuildingPayload = {
     dhw_uef: number;
     heating_setpoint_f: number;
     cooling_setpoint_f: number;
+    ductless?: boolean;
+    duct_leakage_supply_cfm25?: number;
+    duct_leakage_return_cfm25?: number;
   };
   data_source: Record<string, string>;
 };
@@ -74,6 +84,7 @@ export type HpxmlDoc = {
   namespace: string;
   xml_text: string;
   generated_at: string;
+  validation_errors?: FieldError[];
 };
 
 export type EnergyResult = {
@@ -85,6 +96,21 @@ export type EnergyResult = {
   heating_design_load_btuh: number | null;
   cooling_sensible_design_load_btuh: number | null;
   loads_qualification: string;
+  run_log_warnings?: string[] | null;
+  software_defaults?: { element: string; value: string; data_source: string }[] | null;
+};
+
+export type WeatherStation = {
+  zipcode: string;
+  city: string;
+  state_code: string;
+  iecc_zone: string;
+  official_station: string;
+  official_station_name: string;
+  used_station: string;
+  weather_source: string;
+  epw_available: boolean;
+  notes: string;
 };
 
 export type Job = {

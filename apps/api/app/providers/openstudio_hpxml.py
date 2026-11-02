@@ -14,6 +14,7 @@ from app.domain.hpxml import (
     inspect_hpxml,
 )
 from app.domain.results import parse_annual_results
+from app.domain.software_defaults import parse_run_log_warnings, parse_software_defaults
 from app.providers.base import (
     Availability,
     ProviderInput,
@@ -135,4 +136,10 @@ class OpenStudioHpxmlProvider:
             return ProviderRun(status="failed", error_message=message[:4000], artifacts=artifacts)
 
         energy = parse_annual_results(json.loads(annual.read_text(encoding="utf-8")))
+        in_xml = artifacts.get("in_xml")
+        if in_xml and in_xml.exists():
+            energy.software_defaults = parse_software_defaults(in_xml.read_text(encoding="utf-8"))
+        run_log = artifacts.get("run_log")
+        if run_log and run_log.exists():
+            energy.run_log_warnings = parse_run_log_warnings(run_log.read_text(encoding="utf-8"))
         return ProviderRun(status="succeeded", artifacts=artifacts, energy=energy)

@@ -8,7 +8,15 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.domain.bills import UtilityPeriod, assess_history
-from app.domain.building import apply_attic_insulation, default_payload, validate_payload
+from app.domain.building import (
+    apply_attic_insulation,
+    apply_duct_leakage,
+    apply_heat_pump,
+    default_payload,
+    validate_payload,
+)
+from app.domain.schema_check import validate_against_schematron, validate_against_xsd, xsd_available
+from app.domain.weather import apply_weather
 from app.domain.calibration import (
     apply_adjustments,
     assess_calibration,
@@ -65,6 +73,7 @@ def ensure_draft_model(db: Session, home: Home) -> BuildingModel:
         payload["site"]["state_code"] = home.state_code.upper()
     if home.postal_code:
         payload["site"]["postal_code"] = home.postal_code[:5]
+    apply_weather(payload)
     model = BuildingModel(
         home_id=home.id,
         version=1,
@@ -79,6 +88,7 @@ def ensure_draft_model(db: Session, home: Home) -> BuildingModel:
 
 
 def save_model(db: Session, home: Home, payload: dict, role: str = "baseline", parent_id: str | None = None) -> BuildingModel:
+    apply_weather(payload)
     building, errors = validate_payload(payload)
     status = "valid" if building else "invalid"
     record = BuildingModel(
@@ -208,8 +218,18 @@ def _persist_energy(db: Session, job: SimulationJob, energy: ParsedAnnual) -> No
             cooling_sensible_design_load_btuh=energy.cooling_sensible_design_load_btuh,
             loads_qualification=energy.loads_qualification,
             raw_annual=energy.raw_annual,
+            run_log_warnings=energy.run_log_warnings or None,
+            software_defaults=energy.software_defaults or None,
         )
     )
+
+
+def schema_errors_for(xml_text: str) -> list[dict[str, str]]:
+    errors: list[dict[str, str]] = []
+    if xsd_available():
+        errors.extend(validate_against_xsd(xml_text))
+    errors.extend(validate_against_schematron(xml_text))
+    return errors
 
 
 def _refresh_comparison(db: Session, scenario_id: str) -> None:
@@ -289,14 +309,50 @@ def claim_next_job(db: Session) -> SimulationJob | None:
     return job
 
 
-def create_scenario(db: Session, home: Home, name: str, ceiling_assembly_r: float) -> UpgradeScenario:
+def create_scenario(
+    db: Session,
+    home: Home,
+    name: str,
+    measure_type: str = "attic_insulation",
+    ceiling_assembly_r: float = 49.0,
+    heating_efficiency_hspf2: float = 8.5,
+    cooling_efficiency_seer2: float = 16.0,
+    ductless: bool = False,
+    duct_leakage_supply_cfm25: float = 40.0,
+    duct_leakage_return_cfm25: float = 15.0,
+) -> UpgradeScenario:
     baseline = latest_model(db, home.id, "baseline")
     if baseline is None:
         raise ValueError("save and validate a baseline model first")
     baseline = validate_model(db, baseline)
     if baseline.status != "valid":
         raise ValueError("baseline model is invalid")
-    upgraded_payload = apply_attic_insulation(baseline.payload, ceiling_assembly_r)
+    if measure_type == "attic_insulation":
+        upgraded_payload = apply_attic_insulation(baseline.payload, ceiling_assembly_r)
+        measure_payload = {"ceiling_assembly_r": ceiling_assembly_r}
+    elif measure_type == "heat_pump":
+        upgraded_payload = apply_heat_pump(
+            baseline.payload,
+            hspf2=heating_efficiency_hspf2,
+            seer2=cooling_efficiency_seer2,
+            ductless=ductless,
+        )
+        measure_payload = {
+            "heating_type": "mini-split" if ductless else "heat pump",
+            "heating_efficiency_hspf2": heating_efficiency_hspf2,
+            "cooling_efficiency_seer2": cooling_efficiency_seer2,
+            "ductless": ductless,
+        }
+    elif measure_type == "duct_leakage":
+        upgraded_payload = apply_duct_leakage(
+            baseline.payload, duct_leakage_supply_cfm25, duct_leakage_return_cfm25
+        )
+        measure_payload = {
+            "duct_leakage_supply_cfm25": duct_leakage_supply_cfm25,
+            "duct_leakage_return_cfm25": duct_leakage_return_cfm25,
+        }
+    else:
+        raise ValueError("supported measures: attic_insulation, heat_pump, duct_leakage")
     upgraded = save_model(db, home, upgraded_payload, role="upgrade", parent_id=baseline.id)
     if upgraded.status != "valid":
         raise ValueError("upgrade model is invalid")
@@ -307,8 +363,8 @@ def create_scenario(db: Session, home: Home, name: str, ceiling_assembly_r: floa
         baseline_model_id=baseline.id,
         upgraded_model_id=upgraded.id,
         name=name,
-        measure_type="attic_insulation",
-        measure_payload={"ceiling_assembly_r": ceiling_assembly_r},
+        measure_type=measure_type,
+        measure_payload=measure_payload,
     )
     db.add(scenario)
     db.commit()

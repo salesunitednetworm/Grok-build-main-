@@ -15,6 +15,7 @@ import type {
   PackageProposal,
   Scenario,
   UtilityHistory,
+  WeatherStation,
 } from "@/lib/types";
 
 const STEPS = ["Building", "Validate", "HPXML", "Simulate", "Results", "Upgrade", "Bills", "Calibrate", "Packages"] as const;
@@ -46,6 +47,7 @@ export default function HomeDetailPage() {
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [status, setStatus] = useState<EngineStatus | null>(null);
   const [ceilingR, setCeilingR] = useState(49);
+  const [weather, setWeather] = useState<WeatherStation | null>(null);
   const [billsText, setBillsText] = useState("[]");
   const [history, setHistory] = useState<UtilityHistory | null>(null);
   const [calibration, setCalibration] = useState<CalibrationRun | null>(null);
@@ -108,8 +110,14 @@ export default function HomeDetailPage() {
     }
   }
 
-  function field(path: string, value: string | number) {
+  function field(path: string, value: string | number | boolean) {
     if (!payload) return;
+    if (path === "systems.ductless") {
+      const next = structuredClone(payload);
+      next.systems.ductless = Boolean(value);
+      setModel({ ...model!, payload: next });
+      return;
+    }
     setModel({ ...model!, payload: setPath(payload, path, value) });
   }
 
@@ -195,11 +203,66 @@ export default function HomeDetailPage() {
     }
   }
 
+  async function lookupWeather() {
+    if (!payload) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const station = await api.weather(payload.site.postal_code);
+      setWeather(station);
+      const next = structuredClone(payload);
+      next.site.iecc_zone = station.iecc_zone;
+      next.site.weather_station = station.used_station;
+      next.site.state_code = station.state_code;
+      next.site.official_weather_station = station.official_station;
+      next.site.weather_source = station.weather_source;
+      setModel({ ...model!, payload: next });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Weather lookup failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runMeasure(measure: "heat_pump" | "duct_leakage") {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await api.createScenario(
+        id,
+        measure === "heat_pump"
+          ? {
+              name: "Air-source heat pump HSPF2 8.5 / SEER2 16",
+              measure_type: "heat_pump",
+              heating_efficiency_hspf2: 8.5,
+              cooling_efficiency_seer2: 16,
+              ductless: false,
+            }
+          : {
+              name: "Measured duct leakage 40/15 CFM25",
+              measure_type: "duct_leakage",
+              duct_leakage_supply_cfm25: 40,
+              duct_leakage_return_cfm25: 15,
+            },
+      );
+      setScenario(next);
+      setStep("Upgrade");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Scenario failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function compare() {
     setBusy(true);
     setError(null);
     try {
-      const next = await api.createScenario(id, ceilingR);
+      const next = await api.createScenario(id, {
+        name: `Attic insulation to R-${ceilingR}`,
+        measure_type: "attic_insulation",
+        ceiling_assembly_r: ceilingR,
+      });
       setScenario(next);
       setStep("Upgrade");
     } catch (err) {
@@ -244,7 +307,14 @@ export default function HomeDetailPage() {
       {step === "Building" && (
         <form className="card" onSubmit={save}>
           <h2>Building data</h2>
-          <p className="fine">Canonical model. Appliances and lighting use documented OS-HPXML-compatible defaults.</p>
+          <p className="fine">
+            Canonical model. Appliances and lighting are OS-HPXML <code>dataSource=software</code> defaults until
+            collected. Current sources:{" "}
+            {Object.entries(payload.data_source)
+              .map(([key, value]) => `${key}=${value}`)
+              .join(", ") || "none"}
+            .
+          </p>
           <h3>Site</h3>
           <div className="grid">
             <label>
@@ -264,6 +334,18 @@ export default function HomeDetailPage() {
               <input value={payload.site.weather_station} onChange={(e) => field("site.weather_station", e.target.value)} />
             </label>
           </div>
+          <div className="row" style={{ marginTop: 8 }}>
+            <button type="button" className="secondary" disabled={busy} onClick={() => void lookupWeather()}>
+              Map ZIP to TMY3
+            </button>
+          </div>
+          {weather && (
+            <p className="fine">
+              Official station: {weather.official_station_name} ({weather.official_station}). Using{" "}
+              {weather.used_station} ({weather.weather_source}). {weather.notes} EPW available:{" "}
+              {String(weather.epw_available)}.
+            </p>
+          )}
           <h3>Construction</h3>
           <div className="grid">
             <label>
@@ -310,11 +392,29 @@ export default function HomeDetailPage() {
               <input type="number" step="0.1" value={payload.enclosure.ceiling_assembly_r} onChange={(e) => field("enclosure.ceiling_assembly_r", Number(e.target.value))} />
             </label>
             <label>
+              Attic
+              <select value={payload.enclosure.attic_type || "unvented"} onChange={(e) => field("enclosure.attic_type", e.target.value)}>
+                <option value="unvented">Unvented</option>
+                <option value="vented">Vented</option>
+              </select>
+            </label>
+            <label>
               Foundation
               <select value={payload.enclosure.foundation_type} onChange={(e) => field("enclosure.foundation_type", e.target.value)}>
                 <option value="conditioned_basement">Conditioned basement</option>
+                <option value="unconditioned_basement">Unconditioned basement</option>
                 <option value="slab_on_grade">Slab on grade</option>
+                <option value="vented_crawlspace">Vented crawlspace</option>
+                <option value="unvented_crawlspace">Unvented crawlspace</option>
               </select>
+            </label>
+            <label>
+              Rim joist area (ft²)
+              <input type="number" step="0.1" value={payload.enclosure.rim_joist_area_ft2 ?? 115.6} onChange={(e) => field("enclosure.rim_joist_area_ft2", Number(e.target.value))} />
+            </label>
+            <label>
+              Rim joist R
+              <input type="number" step="0.1" value={payload.enclosure.rim_joist_assembly_r ?? 13.9} onChange={(e) => field("enclosure.rim_joist_assembly_r", Number(e.target.value))} />
             </label>
             <label>
               Window U
@@ -328,12 +428,39 @@ export default function HomeDetailPage() {
           <h3>Systems</h3>
           <div className="grid">
             <label>
+              Heating type
+              <select value={payload.systems.heating_type} onChange={(e) => field("systems.heating_type", e.target.value)}>
+                <option value="furnace">Furnace</option>
+                <option value="heat pump">Heat pump</option>
+                <option value="mini-split">Mini-split</option>
+              </select>
+            </label>
+            <label>
               Heating AFUE
               <input type="number" step="0.01" value={payload.systems.heating_efficiency_afue} onChange={(e) => field("systems.heating_efficiency_afue", Number(e.target.value))} />
             </label>
             <label>
+              Heating HSPF2
+              <input type="number" step="0.1" value={payload.systems.heating_efficiency_hspf2 ?? 7} onChange={(e) => field("systems.heating_efficiency_hspf2", Number(e.target.value))} />
+            </label>
+            <label>
               Cooling SEER2
               <input type="number" step="0.1" value={payload.systems.cooling_efficiency_seer2} onChange={(e) => field("systems.cooling_efficiency_seer2", Number(e.target.value))} />
+            </label>
+            <label>
+              Supply duct CFM25
+              <input type="number" step="0.1" value={payload.systems.duct_leakage_supply_cfm25 ?? 81} onChange={(e) => field("systems.duct_leakage_supply_cfm25", Number(e.target.value))} />
+            </label>
+            <label>
+              Return duct CFM25
+              <input type="number" step="0.1" value={payload.systems.duct_leakage_return_cfm25 ?? 27} onChange={(e) => field("systems.duct_leakage_return_cfm25", Number(e.target.value))} />
+            </label>
+            <label>
+              Ductless
+              <select value={payload.systems.ductless ? "yes" : "no"} onChange={(e) => field("systems.ductless", e.target.value === "yes")}>
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
             </label>
             <label>
               DHW UEF
@@ -392,6 +519,15 @@ export default function HomeDetailPage() {
               <p className="fine">
                 {hpxml.namespace} · schema {hpxml.schema_version} · authored by this product, not BuildResidentialHPXML
               </p>
+              {hpxml.validation_errors && hpxml.validation_errors.length > 0 && (
+                <ul className="errors">
+                  {hpxml.validation_errors.map((item) => (
+                    <li key={`${item.field}-${item.message}`}>
+                      {item.field}: {item.message}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <pre className="xml">{hpxml.xml_text}</pre>
             </>
           ) : (
@@ -472,15 +608,39 @@ export default function HomeDetailPage() {
             Source would be {job?.energy_result?.source || "none"}. Loads qualification:{" "}
             {job?.energy_result?.loads_qualification || "n/a"}.
           </p>
+          {job?.energy_result?.run_log_warnings && job.energy_result.run_log_warnings.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <h3>run.log warnings</h3>
+              <ul className="fine">
+                {job.energy_result.run_log_warnings.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {job?.energy_result?.software_defaults && job.energy_result.software_defaults.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <h3>Software defaults (in.xml dataSource=software)</h3>
+              <ul className="fine">
+                {job.energy_result.software_defaults.slice(0, 40).map((item, index) => (
+                  <li key={`${item.element}-${index}`}>
+                    {item.element}
+                    {item.value ? `: ${item.value}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
       {step === "Upgrade" && (
         <div className="card">
-          <h2>Compare attic insulation</h2>
+          <h2>Compare a measure</h2>
           <p className="fine">
-            Clones the validated model and changes only ceiling assembly R. Pre/post are otherwise identical.
-            Deltas appear only if both EnergyPlus jobs succeed.
+            Clones the validated model and changes only the selected ECM fields. Pre/post are otherwise identical.
+            Deltas appear only if both EnergyPlus jobs succeed. Heat-pump and duct-leakage cases re-run the real
+            model — no added percentages.
           </p>
           <label style={{ maxWidth: 240 }}>
             Upgrade ceiling R
@@ -488,7 +648,13 @@ export default function HomeDetailPage() {
           </label>
           <div className="row" style={{ marginTop: 12 }}>
             <button type="button" disabled={busy} onClick={() => void compare()}>
-              Generate upgrade and queue both jobs
+              Attic R upgrade
+            </button>
+            <button type="button" className="secondary" disabled={busy} onClick={() => void runMeasure("heat_pump")}>
+              Heat pump (re-run EnergyPlus)
+            </button>
+            <button type="button" className="secondary" disabled={busy} onClick={() => void runMeasure("duct_leakage")}>
+              Duct leakage 40/15 CFM25
             </button>
           </div>
           {scenario && (

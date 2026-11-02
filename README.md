@@ -26,7 +26,7 @@ docker compose up --build
 
 Without the OpenStudio CLI, jobs complete as **`unavailable`**. HPXML is still generated and stored. No fake energy results.
 
-On Ubuntu 24.04 x86_64, install the pinned engine (official tarball + OS-HPXML zip; Denver TMY3 is inside the 1.12.0 tree):
+On Ubuntu 24.04 x86_64, install the pinned engine (official tarball + OS-HPXML zip; TMY3 files inside the 1.12.0 `weather/` folder):
 
 ```bash
 ./scripts/install-openstudio.sh
@@ -59,9 +59,11 @@ npm run dev
 
 ## Vertical slice
 
-Create Home → Enter Building Data → Validate → Generate HPXML → Run OpenStudio-HPXML/EnergyPlus → Store artifacts → Display energy results → Compare one attic-insulation upgrade.
+Create Home → Enter Building Data → Validate → Generate HPXML → Map ZIP to TMY3 → Run OpenStudio-HPXML/EnergyPlus → Store artifacts → Display energy results (plus software defaults and `run.log` warnings) → Compare attic, heat-pump, or duct-leakage upgrades.
 
-Utility history, residual scaffolding, and attic / air-sealing / HPWH packages sit on the same path. Calibration is **preliminary / not certified** and is not a BPI-2400 claim. Packages re-run EnergyPlus; they do not add percentages.
+Utility history, residual scaffolding, and attic / air-sealing / HPWH packages sit on the same path. Calibration is **preliminary / not certified** and is not a BPI-2400 claim. Packages and upgrade scenarios re-run EnergyPlus; they do not add percentages.
+
+ZIP weather uses OS-HPXML `zipcode_weather_stations.csv`. Official station is always shown; if that EPW is not shipped, the nearest shipped TMY3 is used and labeled.
 
 Verification harness: `apps/api/tests/verification/` (versioned artifacts; no ASHRAE 140 verdicts).
 
