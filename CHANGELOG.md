@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.2 — 2026-11-02
+
+- Address typeahead is a production defect fix. Photon / OSM ranked parks, businesses, and foreign streets; those results are no longer shown. Seeded example addresses were removed from the create-home form.
+- Typeahead uses a documented production geocoder: Smarty, Google Places, or Mapbox when those keys are set; otherwise Esri World Geocoding Service `suggest` with `countryCode=USA` and `category=Address`. House number is required. Census `onelineaddress` still standardizes on select. Missing ZIP stays empty.
+- Suggestions are `POST /api/v1/address-suggestions` so the typed line is not placed on the query string.
+
+## 0.5.1 — 2026-11-02
+
+- Create-home street field is a debounced typeahead. Suggestions come from Photon (`photon.komoot.io`, OpenStreetMap). Selecting a match fills street, city, state, and ZIP when those fields exist. US Census Geocoder `onelineaddress` standardizes the selected line; it is not used for typeahead because incomplete streets return no matches.
+- The API proxies both geocoders (`GET /api/v1/address-suggestions`, `POST /api/v1/address-lookup`). The browser never calls them directly. Missing ZIP stays empty; no invented addresses.
+
 ## 0.5.0 — 2026-11-02
 
 - Contractor job operating-system slice: sixteen persisted stages from lead through payment. Program submission, approval, reservation, final submission, and payment stay blocked until an operator records an external `{source, reference}` confirmation. Those fields start unset.

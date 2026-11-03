@@ -1,20 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
-import { EXAMPLE_ADDRESSES, applyZipPlace, zip5 } from "@/lib/address";
+import { FormEvent, KeyboardEvent, useEffect, useId, useRef, useState } from "react";
+import { applySuggestion, applyZipPlace, geocoderLabel, zip5 } from "@/lib/address";
 import { api } from "@/lib/api";
-import type { EngineStatus, Home } from "@/lib/types";
+import type { AddressSuggestion, EngineStatus, Home } from "@/lib/types";
+
+const DEBOUNCE_MS = 350;
 
 export default function HomePage() {
   const [homes, setHomes] = useState<Home[]>([]);
   const [status, setStatus] = useState<EngineStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState("12 Pine Street");
-  const [city, setCity] = useState("Denver");
-  const [stateCode, setStateCode] = useState("CO");
-  const [postal, setPostal] = useState("80202");
+  const [name, setName] = useState("");
+  const [city, setCity] = useState("");
+  const [stateCode, setStateCode] = useState("");
+  const [postal, setPostal] = useState("");
   const [placeNote, setPlaceNote] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const [looking, setLooking] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seqRef = useRef(0);
+  const listId = useId();
 
   async function load() {
     try {
@@ -28,23 +37,116 @@ export default function HomePage() {
 
   useEffect(() => {
     void load();
+    return () => {
+      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+    };
   }, []);
 
-  function applyExample(index: string) {
-    const example = EXAMPLE_ADDRESSES[Number(index)];
-    if (!example) return;
-    setName(example.street);
-    setCity(example.city);
-    setStateCode(example.state);
-    setPostal(example.zip);
-    setPlaceNote("Example address filled. City and state also come from the OS-HPXML ZIP table when you change ZIP.");
+  async function requestSuggestions(query: string) {
+    const seq = ++seqRef.current;
+    setLooking(true);
+    try {
+      const result = await api.addressSuggestions(query);
+      if (seq !== seqRef.current) return;
+      setSuggestions(result.items);
+      setOpen(result.items.length > 0);
+      setActive(result.items.length > 0 ? 0 : -1);
+      if (result.items.length === 0 && query.trim().length >= 3) {
+        setPlaceNote("No documented US match yet. Keep typing a house number and street.");
+      }
+    } catch {
+      if (seq !== seqRef.current) return;
+      setSuggestions([]);
+      setOpen(false);
+      setPlaceNote("Address suggestions are unavailable. City and state still fill from a known ZIP.");
+    } finally {
+      if (seq === seqRef.current) setLooking(false);
+    }
+  }
+
+  function onStreetChange(value: string) {
+    setName(value);
+    if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+    if (value.trim().length < 3) {
+      seqRef.current += 1;
+      setSuggestions([]);
+      setOpen(false);
+      setActive(-1);
+      setLooking(false);
+      return;
+    }
+    debounceRef.current = window.setTimeout(() => {
+      void requestSuggestions(value);
+    }, DEBOUNCE_MS);
+  }
+
+  async function pick(item: AddressSuggestion) {
+    seqRef.current += 1;
+    if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+    setOpen(false);
+    setSuggestions([]);
+    setActive(-1);
+    const next = applySuggestion(
+      { street: name, city, state: stateCode, zip: postal },
+      item,
+    );
+    setName(next.street);
+    setCity(next.city);
+    setStateCode(next.state);
+    setPostal(next.zip);
+    setPlaceNote(
+      item.postal_code
+        ? `Filled from ${geocoderLabel(item.source)}.`
+        : "Street, city, and state filled. ZIP was not in the geocoder match.",
+    );
+    try {
+      const filled = await api.addressLookup({
+        address: item.label,
+        street: item.street,
+        city: item.city,
+        state_code: item.state_code,
+        postal_code: item.postal_code,
+        source: item.source,
+        id: item.id,
+      });
+      const standardized = applySuggestion(next, filled);
+      setName(standardized.street);
+      setCity(standardized.city);
+      setStateCode(standardized.state);
+      setPostal(standardized.zip);
+      setPlaceNote(
+        filled.postal_code
+          ? `Filled from ${geocoderLabel(filled.source)}.`
+          : "Street, city, and state filled. ZIP was not in the geocoder match.",
+      );
+    } catch {
+      // Keep the Photon fields already written. Do not invent a ZIP.
+    }
+  }
+
+  function onStreetKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (!open || suggestions.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActive((index) => Math.min(suggestions.length - 1, index + 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActive((index) => Math.max(0, index - 1));
+    } else if (event.key === "Enter") {
+      if (active >= 0 && suggestions[active]) {
+        event.preventDefault();
+        void pick(suggestions[active]);
+      }
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+    }
   }
 
   async function fillFromZip(raw: string) {
     const digits = zip5(raw);
     setPostal(digits);
     if (digits.length !== 5) {
-      setPlaceNote(null);
       return;
     }
     try {
@@ -56,7 +158,7 @@ export default function HomePage() {
       setCity(next.city);
       setStateCode(next.state);
       setPostal(next.zip);
-      setPlaceNote(`${station.city}, ${station.state_code} from the OS-HPXML ZIP table. Not a street geocoder.`);
+      setPlaceNote(`${station.city}, ${station.state_code} from the OS-HPXML ZIP table.`);
     } catch {
       setPlaceNote("ZIP is not in the OS-HPXML table. City and state were left as typed.");
     }
@@ -92,30 +194,55 @@ export default function HomePage() {
       <div className="card">
         <h1>Create a home</h1>
         <p className="fine">
-          Building data → validate → HPXML → simulate → attic compare → bills → calibration scaffolding →
-          packages. Calibration is preliminary / not certified.
+          Type a US house number and street. A production geocoder returns house-level matches and
+          fills city, state, and ZIP when it has them. ZIP is never invented.
         </p>
-        <form onSubmit={onCreate} className="grid" autoComplete="on">
-          <label>
-            Example address
-            <select defaultValue="" onChange={(e) => applyExample(e.target.value)}>
-              <option value="">Tap to fill street, city, state, ZIP</option>
-              {EXAMPLE_ADDRESSES.map((row, index) => (
-                <option key={row.zip} value={String(index)}>
-                  {row.street}, {row.city}, {row.state} {row.zip}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Street
+        <form onSubmit={onCreate} className="grid" autoComplete="off">
+          <label className="address-field">
+            Street address
             <input
               name="address-line1"
-              autoComplete="address-line1"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="text"
+              placeholder="Start typing a house number and street"
               value={name}
-              onChange={(e) => setName(e.target.value)}
               required
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={open}
+              aria-controls={listId}
+              aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
+              onChange={(e) => onStreetChange(e.target.value)}
+              onKeyDown={onStreetKeyDown}
+              onBlur={() => window.setTimeout(() => setOpen(false), 180)}
+              onFocus={() => {
+                if (suggestions.length > 0) setOpen(true);
+              }}
             />
+            {looking && <span className="fine suggest-status">Looking up addresses…</span>}
+            {open && suggestions.length > 0 && (
+              <ul className="suggest-list" id={listId} role="listbox">
+                {suggestions.map((item, index) => (
+                  <li
+                    key={item.id}
+                    id={`${listId}-${index}`}
+                    role="option"
+                    aria-selected={index === active}
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      void pick(item);
+                    }}
+                  >
+                    <strong>{item.street}</strong>
+                    <span>
+                      {[item.city, item.state_code, item.postal_code].filter(Boolean).join(" · ")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </label>
           <label>
             ZIP
@@ -123,13 +250,20 @@ export default function HomePage() {
               name="postal-code"
               autoComplete="postal-code"
               inputMode="numeric"
+              placeholder="ZIP"
               value={postal}
               onChange={(e) => void fillFromZip(e.target.value)}
             />
           </label>
           <label>
             City
-            <input name="address-level2" autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} />
+            <input
+              name="address-level2"
+              autoComplete="address-level2"
+              placeholder="City"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            />
           </label>
           <label>
             State
@@ -137,6 +271,7 @@ export default function HomePage() {
               name="address-level1"
               autoComplete="address-level1"
               maxLength={2}
+              placeholder="ST"
               value={stateCode}
               onChange={(e) => setStateCode(e.target.value.toUpperCase())}
             />

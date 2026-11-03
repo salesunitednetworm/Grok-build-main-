@@ -22,6 +22,10 @@ from app.models import (
 )
 from app.providers import default_provider
 from app.schemas import (
+    AddressLookupIn,
+    AddressSuggestIn,
+    AddressSuggestion,
+    AddressSuggestionList,
     BuildingModelIn,
     BuildingModelOut,
     CalibrationOut,
@@ -44,6 +48,7 @@ from app.schemas import (
     WeatherOut,
 )
 from app import services
+from app import services_address
 from app.storage import read_artifact
 
 router = APIRouter(prefix="/api/v1")
@@ -131,6 +136,31 @@ def engine_status() -> EngineStatus:
 @router.get("/defaults")
 def defaults() -> dict:
     return default_payload()
+
+
+@router.post("/address-suggestions", response_model=AddressSuggestionList)
+def address_suggestions(body: AddressSuggestIn) -> AddressSuggestionList:
+    items, source = services_address.suggest_addresses(body.query)
+    return AddressSuggestionList(source=source, items=items)
+
+
+@router.post("/address-lookup", response_model=AddressSuggestion)
+def address_lookup(body: AddressLookupIn) -> AddressSuggestion:
+    selected = None
+    if body.street:
+        selected = AddressSuggestion(
+            id=body.id or body.address,
+            label=body.address,
+            street=body.street,
+            city=body.city,
+            state_code=body.state_code,
+            postal_code=body.postal_code,
+            source=body.source or "esri",
+        )
+    filled = services_address.fill_address(body.address, selected)
+    if filled is None:
+        raise HTTPException(404, "no documented geocoder match")
+    return filled
 
 
 @router.get("/weather/{zipcode}", response_model=WeatherOut)

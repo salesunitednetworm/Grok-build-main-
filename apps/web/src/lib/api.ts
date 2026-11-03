@@ -1,4 +1,5 @@
 import type {
+  AddressSuggestion,
   BuildingModel,
   BuildingPayload,
   CalibrationRun,
@@ -39,6 +40,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   status: () => request<EngineStatus>("/api/v1/status"),
   homes: () => request<Home[]>("/api/v1/homes"),
+  addressSuggestions: (q: string) =>
+    request<{ source: string; items: AddressSuggestion[] }>("/api/v1/address-suggestions", {
+      method: "POST",
+      body: JSON.stringify({ query: q }),
+    }),
+  addressLookup: (body: {
+    address: string;
+    street?: string;
+    city?: string | null;
+    state_code?: string | null;
+    postal_code?: string | null;
+    source?: string;
+    id?: string;
+  }) => request<AddressSuggestion>("/api/v1/address-lookup", { method: "POST", body: JSON.stringify(body) }),
   createHome: (body: Partial<Home> & { name: string }) =>
     request<Home>("/api/v1/homes", { method: "POST", body: JSON.stringify(body) }),
   home: (id: string) => request<Home>(`/api/v1/homes/${id}`),

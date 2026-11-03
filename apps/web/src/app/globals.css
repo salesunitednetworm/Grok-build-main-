@@ -290,3 +290,56 @@ h3 {
 .board-card strong {
   font-size: 0.92rem;
 }
+
+.address-field {
+  grid-column: 1 / -1;
+  position: relative;
+}
+
+.address-field input {
+  font-size: 16px;
+}
+
+.suggest-status {
+  margin-top: 4px;
+}
+
+.suggest-list {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 2px);
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--line);
+  max-height: min(280px, 50vh);
+  overflow: auto;
+  box-shadow: 0 10px 24px rgba(27, 23, 20, 0.08);
+}
+
+.suggest-list li {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 48px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.suggest-list li strong {
+  font-size: 0.98rem;
+}
+
+.suggest-list li span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.suggest-list li[aria-selected="true"],
+.suggest-list li:hover {
+  background: var(--paper);
+}
