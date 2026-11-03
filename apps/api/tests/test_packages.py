@@ -46,6 +46,19 @@ def test_unexpected_field_change_fails_consistency():
     assert any("heating_efficiency_afue" in item for item in report.unexpected)
 
 
+def test_conditioned_slab_clamps_to_cfa():
+    from app.domain.hpxml import conditioned_slab_area
+
+    payload = default_payload()
+    payload["construction"]["conditioned_floor_area_ft2"] = 1300
+    model, errors = validate_payload(payload)
+    assert errors == []
+    assert model is not None
+    assert conditioned_slab_area(model) == 1300
+    xml = generate_hpxml(model)
+    assert "<Area>1300.0</Area>" in xml
+
+
 def test_hpwh_package_emits_heat_pump_water_heater():
     payload = apply_measures(default_payload(), ["hpwh"])
     model, errors = validate_payload(payload)

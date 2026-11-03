@@ -3,9 +3,9 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Home Energy Modeling Platform",
+  title: "Fieldline Energy",
   description:
-    "Canonical building models, HPXML, and OpenStudio-HPXML / EnergyPlus. Not DOE HOMES approved.",
+    "Contractor home-energy workspace. OpenStudio-HPXML / EnergyPlus. Not DOE HOMES approved.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -15,12 +15,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="shell">
           <header className="topbar">
             <Link className="brand" href="/">
-              Home Energy Modeling
+              Fieldline
               <span>OpenStudio-HPXML 1.12.0 · EnergyPlus 25.2.0</span>
             </Link>
-            <p className="fine">
-              <Link href="/projects">Job board</Link> · Not a DOE HOMES or ACCA-listed product
-            </p>
+            <nav className="nav">
+              <Link href="/">Homes</Link>
+              <Link href="/projects">Job board</Link>
+              <span>Not a DOE HOMES or ACCA-listed product</span>
+            </nav>
           </header>
           {children}
         </div>

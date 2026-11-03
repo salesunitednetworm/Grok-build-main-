@@ -113,6 +113,20 @@ def _foundation_space(model: CanonicalBuilding) -> str:
     }[model.enclosure.foundation_type]
 
 
+def conditioned_slab_area(model: CanonicalBuilding) -> float:
+    """OS-HPXML requires ConditionedFloorArea >= conditioned slab/floor areas.
+
+    The slab is emitted at the ceiling footprint. When the operator entered a
+    smaller CFA (common on a new home), clamp the slab so EnergyPlus can run.
+    This does not invent kWh.
+    """
+    footprint = model.enclosure.ceiling_area_ft2
+    cfa = model.construction.conditioned_floor_area_ft2
+    if model.enclosure.foundation_type == "conditioned_basement" and cfa < footprint:
+        return cfa
+    return footprint
+
+
 def _separated_foundation(model: CanonicalBuilding) -> bool:
     return model.enclosure.foundation_type in {
         "unconditioned_basement",
@@ -282,7 +296,7 @@ def _enclosure(details: ET.Element, model: CanonicalBuilding) -> None:
     slab = _el("Slab", slabs)
     _el("SystemIdentifier", slab, id="Slab1")
     _el("InteriorAdjacentTo", slab, interior_found)
-    slab_area = model.enclosure.ceiling_area_ft2
+    slab_area = conditioned_slab_area(model)
     _el("Area", slab, f"{slab_area:.1f}")
     _el("ExposedPerimeter", slab, "150.0")
     peri = _el("PerimeterInsulation", slab)

@@ -23,6 +23,19 @@ from app.providers.base import (
 )
 
 
+def _failure_message(stderr: str | None, stdout: str | None, run_log: Path | None) -> str:
+    chunks: list[str] = []
+    if run_log and run_log.exists():
+        text = run_log.read_text(encoding="utf-8", errors="replace")
+        errors = [line.strip() for line in text.splitlines() if line.strip().startswith("Error:")]
+        if errors:
+            chunks.append("\n".join(errors))
+    cli = "\n".join(part for part in (stderr or "", stdout or "") if part.strip())
+    if cli:
+        chunks.append(cli.strip())
+    return "\n".join(chunks) or "OpenStudio-HPXML run failed"
+
+
 class OpenStudioHpxmlProvider:
     id = "openstudio_hpxml"
     display_name = "OpenStudio-HPXML v1.12.0 (EnergyPlus 25.2.0)"
@@ -132,7 +145,7 @@ class OpenStudioHpxmlProvider:
                 break
 
         if completed.returncode != 0 or annual is None:
-            message = (completed.stderr or completed.stdout or "OpenStudio-HPXML run failed").strip()
+            message = _failure_message(completed.stderr, completed.stdout, artifacts.get("run_log"))
             return ProviderRun(status="failed", error_message=message[:4000], artifacts=artifacts)
 
         energy = parse_annual_results(json.loads(annual.read_text(encoding="utf-8")))

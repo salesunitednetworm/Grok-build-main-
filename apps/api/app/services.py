@@ -528,6 +528,25 @@ def _refresh_package(db: Session, proposal: PackageProposal) -> None:
     if baseline is None or upgrade is None:
         return
     if baseline.status in {"queued", "running"} or upgrade.status in {"queued", "running"}:
+        proposal.status = "pending"
+        proposal.notes = (
+            f"Package {proposal.name}: EnergyPlus is {upgrade.status if upgrade.status in {'queued', 'running'} else baseline.status}. "
+            "Deltas stay empty until both annual files are parsed. No kWh is invented."
+        )
+        db.commit()
+        return
+    if baseline.status == "failed" or upgrade.status == "failed":
+        failed = upgrade if upgrade.status == "failed" else baseline
+        proposal.status = "failed"
+        proposal.electricity_kwh_delta = None
+        proposal.natural_gas_therm_delta = None
+        proposal.total_mbtu_delta = None
+        proposal.notes = (
+            f"Package {proposal.name}: EnergyPlus failed on the "
+            f"{'upgrade' if failed is upgrade else 'baseline'} run. "
+            f"{failed.error_message or failed.unavailable_reason or 'No run.log Error line was stored.'}"
+        )
+        db.commit()
         return
     deltas = compare_results(_energy_to_parsed(baseline.energy_result), _energy_to_parsed(upgrade.energy_result))
     proposal.status = deltas.status
@@ -552,9 +571,21 @@ def _refresh_packages_for_job(db: Session, job_id: str) -> None:
 
 
 def latest_packages(db: Session, home_id: str) -> list[PackageProposal]:
-    return list(
+    rows = list(
         db.scalars(select(PackageProposal).where(PackageProposal.home_id == home_id).order_by(PackageProposal.created_at.desc()))
     )
+    latest: list[PackageProposal] = []
+    seen: set[str] = set()
+    for row in rows:
+        if row.name in seen:
+            continue
+        seen.add(row.name)
+        latest.append(row)
+    latest.reverse()
+    for row in latest:
+        _refresh_package(db, row)
+        db.refresh(row)
+    return latest
 
 
 def create_packages(db: Session, home: Home) -> list[PackageProposal]:
