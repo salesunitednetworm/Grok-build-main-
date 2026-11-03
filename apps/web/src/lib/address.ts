@@ -32,3 +32,20 @@ export function exampleByZip(zip: string): AddressDraft | undefined {
   const digits = zip5(zip);
   return EXAMPLE_ADDRESSES.find((row) => row.zip === digits);
 }
+
+export function applySuggestion(
+  current: AddressDraft,
+  suggestion: {
+    street: string;
+    city: string | null;
+    state_code: string | null;
+    postal_code: string | null;
+  },
+): AddressDraft {
+  return {
+    street: suggestion.street || current.street,
+    city: suggestion.city || current.city,
+    state: suggestion.state_code || current.state,
+    zip: suggestion.postal_code || current.zip,
+  };
+}

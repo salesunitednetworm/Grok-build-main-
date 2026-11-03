@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1 — 2026-11-02
+
+- Create-home street field is a debounced typeahead. Suggestions come from Photon (`photon.komoot.io`, OpenStreetMap). Selecting a match fills street, city, state, and ZIP when those fields exist. US Census Geocoder `onelineaddress` standardizes the selected line; it is not used for typeahead because incomplete streets return no matches.
+- The API proxies both geocoders (`GET /api/v1/address-suggestions`, `POST /api/v1/address-lookup`). The browser never calls them directly. Missing ZIP stays empty; no invented addresses.
+
 ## 0.5.0 — 2026-11-02
 
 - Contractor job operating-system slice: sixteen persisted stages from lead through payment. Program submission, approval, reservation, final submission, and payment stay blocked until an operator records an external `{source, reference}` confirmation. Those fields start unset.

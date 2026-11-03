@@ -18,6 +18,32 @@ class HomeCreate(BaseModel):
     postal_code: str | None = None
 
 
+class AddressSuggestion(BaseModel):
+    id: str
+    label: str
+    street: str
+    city: str | None = None
+    state_code: str | None = Field(default=None, max_length=2)
+    postal_code: str | None = None
+    source: str
+
+
+class AddressSuggestionList(BaseModel):
+    query: str
+    source: str
+    items: list[AddressSuggestion]
+
+
+class AddressLookupIn(BaseModel):
+    address: str = Field(min_length=1, max_length=300)
+    street: str | None = None
+    city: str | None = None
+    state_code: str | None = Field(default=None, max_length=2)
+    postal_code: str | None = None
+    source: str | None = None
+    id: str | None = None
+
+
 class HomeOut(HomeCreate, OrmModel):
     id: str
     created_at: datetime

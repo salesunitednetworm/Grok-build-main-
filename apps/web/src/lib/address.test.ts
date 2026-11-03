@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyZipPlace, exampleByZip, zip5 } from "./address";
+import { applySuggestion, applyZipPlace, exampleByZip, zip5 } from "./address";
 
 test("zip5 keeps the first five digits", () => {
   assert.equal(zip5("80202-1234"), "80202");
@@ -18,4 +18,15 @@ test("ZIP place fills city and state without inventing a street", () => {
 
 test("example list is keyed by documented demo ZIPs", () => {
   assert.equal(exampleByZip("27601")?.city, "Raleigh");
+});
+
+test("suggestion fill does not invent a missing ZIP", () => {
+  const next = applySuggestion(
+    { street: "", city: "", state: "", zip: "" },
+    { street: "12 Pine Street", city: "Denver", state_code: "CO", postal_code: null },
+  );
+  assert.equal(next.street, "12 Pine Street");
+  assert.equal(next.city, "Denver");
+  assert.equal(next.state, "CO");
+  assert.equal(next.zip, "");
 });

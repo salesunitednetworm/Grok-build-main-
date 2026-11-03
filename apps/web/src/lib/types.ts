@@ -10,6 +10,16 @@ export type Home = {
   created_at: string;
 };
 
+export type AddressSuggestion = {
+  id: string;
+  label: string;
+  street: string;
+  city: string | null;
+  state_code: string | null;
+  postal_code: string | null;
+  source: string;
+};
+
 export type BuildingPayload = {
   schema: string;
   site: {
