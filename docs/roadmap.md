@@ -52,12 +52,21 @@ Stacked on the energy-platform slice. Still **not** DOE-approved. Still **not** 
 - Screens use stored EnergyPlus totals when a succeeded pair exists. Missing results stay `not_evaluable`. No invented kWh or BPI-2400 kWhe %.
 - Never claims Neighborly / Energy Saver NC / PNNL submission, reservation, approval, or payment. Never edits the building model to force qualification.
 
+## Now also — contractor OS slice (this milestone)
+
+First job operating-system slice, **not** a CRM. Stacked on the NC/GA compliance branch.
+
+- Sixteen persisted stages: Lead → Intake → Audit → Modeling → Package Optimization → Proposal → Signature → Program Submission → Approval → Reservation → Scheduling → Installation → QA → Inspection → Final Submission → Payment.
+- Gated stages (`program_submission`, `approval`, `reservation`, `final_submission`, `payment`) require a recorded external confirmation (`source` + `reference`). Those fields start unset. The product never claims a portal submission, reservation, approval, or payment on its own.
+- Contractor job board + homeowner “what to do next” page. Copy never invents kWh or rebate awards.
+- Ports first: `JobPhotoPort` (`PreSiteProFileAdapter` disk + `presitepro.photo/v1` sidecars — not a `pre-site-pro` clone), `CrmPort` (file adapter, `pending_vendor`), `ESignPort` (file adapter, `pending_vendor` until a completed PDF is ingested). No fake vendor success.
+- Photo checklist plus proposal and work-order records that pin `building_model_id` and a compliance `program_evaluation` version when one exists.
+
 ## Then — remaining single-family audit model
 
 - Dual-fuel heat pumps as a first-class measure
 - Appliances and lighting as collected fields, not only software defaults
 - Stochastic occupancy as an explicit opt-in
-- Photo attachments via `JobPhotoPort` + `PreSiteProFileAdapter` (no PreSite repo clone)
 - Download missing official TMY3 EPWs instead of nearest-shipped fallback
 
 ## Then — remaining BPI-2400 process (still not “approved”)
@@ -86,17 +95,18 @@ Only if we want **this** product on a 50121 list:
 
 HEAR (50122) is a different path (measures, not BPI-2400 modeled savings). Multifamily is BuildingSync / other DOE guidance.
 
-## Contractor operations (parallel, after slice)
+## Contractor operations (after this slice)
 
-Ports first, vendors second (`docs/research/integrations.md`):
+File adapters shipped. Production vendors still later (`docs/research/integrations.md`):
 
-| Port | First concrete adapter |
-| --- | --- |
-| `CrmPort` | Zoho v8 **or** HighLevel v3 — pick one tenant CRM |
-| `JobPhotoPort` | PreSite Pro files; CompanyCam optional later |
-| `ESignPort` | Dropbox Sign or Acrobat Sign (DocuSign docs were unchecked) |
-| `MessagingPort` | Twilio or HighLevel; TCPA consent ledger required |
-| `EquipmentCatalogPort` | ENERGY STAR SODA; link out to AHRI certificates |
+| Port | First concrete adapter | Status |
+| --- | --- | --- |
+| `CrmPort` | File JSON (`pending_vendor`) | Zoho v8 **or** HighLevel v3 later |
+| `JobPhotoPort` | `PreSiteProFileAdapter` | CompanyCam optional later |
+| `ESignPort` | File JSON (`pending_vendor`) | Dropbox Sign or Acrobat Sign later |
+| `MessagingPort` | none | Twilio or HighLevel; TCPA consent ledger required |
+| `SchedulingPort` | none | After this slice |
+| `EquipmentCatalogPort` | none | ENERGY STAR SODA; link out to AHRI certificates |
 
 Do not scrape AHRI, NEEP bulk lists, MAEDbS, or utility portals.
 
@@ -121,3 +131,4 @@ Do not scrape AHRI, NEEP bulk lists, MAEDbS, or utility portals.
 - ZIP maps to an official TMY3 (fallback labeled when the official EPW is not shipped); software defaults and `run.log` warnings appear next to results; XSD/Schematron errors map onto form fields
 - Heat-pump (HSPF2/SEER2) and measured duct-leakage (CFM25) scenarios re-run EnergyPlus and persist parsed kWh — still not DOE / BPI / ACCA
 - NC/GA program screens exist as versioned packs on a stacked PR; they do not submit rebates and do not claim DOE approval
+- Contractor job stages persist; gated rebate/payment stages stay unused without an external confirmation; photo/CRM/e-sign ports use file adapters only

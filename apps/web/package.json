@@ -6,7 +6,7 @@
     "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start --port 3000",
-    "test": "node --import tsx --test src/lib/format.test.ts"
+    "test": "node --import tsx --test src/lib/format.test.ts src/lib/address.test.ts"
   },
   "dependencies": {
     "next": "^15.5.6",

@@ -83,4 +83,19 @@ export const api = {
     }),
   programEvaluations: (id: string) =>
     request<ProgramEvaluation[]>(`/api/v1/homes/${id}/program-evaluations`),
+  projectBoard: () => request<{ columns: Record<string, any[]>; stages: string[] }>("/api/v1/projects/board"),
+  createProject: (body: { home_id: string; name?: string }) =>
+    request<any>("/api/v1/projects", { method: "POST", body: JSON.stringify(body) }),
+  project: (id: string) => request<any>(`/api/v1/projects/${id}`),
+  setStage: (id: string, stage: string) =>
+    request<any>(`/api/v1/projects/${id}/stage`, { method: "POST", body: JSON.stringify({ stage }) }),
+  confirmProject: (id: string, body: { kind: string; source: string; reference: string }) =>
+    request<any>(`/api/v1/projects/${id}/confirmations`, { method: "POST", body: JSON.stringify(body) }),
+  createProposal: (id: string, body: { title: string; measures: string[] }) =>
+    request<any>(`/api/v1/projects/${id}/proposals`, { method: "POST", body: JSON.stringify(body) }),
+  sendProposal: (proposalId: string, body: { signer_name: string; signer_email: string }) =>
+    request<any>(`/api/v1/proposals/${proposalId}/send`, { method: "POST", body: JSON.stringify(body) }),
+  createWorkOrder: (id: string, body: { title: string; scope: string; proposal_id?: string }) =>
+    request<any>(`/api/v1/projects/${id}/work-orders`, { method: "POST", body: JSON.stringify(body) }),
+  homeownerStatus: (id: string) => request<any>(`/api/v1/projects/${id}/homeowner`),
 };

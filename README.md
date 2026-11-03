@@ -69,6 +69,8 @@ Verification harness: `apps/api/tests/verification/` (versioned artifacts; no AS
 
 NC / GA HOMES/HEAR **program screens** are versioned JSON rule packs. They pin the pack version on each evaluation, use stored EnergyPlus totals only, and never claim DOE approval or portal submission.
 
+Contractor **job files** persist a sixteen-stage pipeline, a photo checklist, and proposal / work-order records. Photo, CRM, and e-sign ports use file adapters (`pending_vendor`). Gated rebate/payment stages stay unused unless an external confirmation is recorded.
+
 ## Attribution
 
 OpenStudio, EnergyPlus, and OpenStudio-HPXML are used as unmodified engines under their BSD-3-like licenses. This product is not named OpenStudio or EnergyPlus. See `NOTICE`.

@@ -251,3 +251,42 @@ h3 {
   color: var(--muted);
   font-size: 0.9rem;
 }
+
+.board {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0 16px;
+}
+
+.board-col {
+  min-width: 176px;
+  flex: 0 0 176px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 10px;
+}
+
+.board-col h3 {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.board-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 8px;
+  margin-bottom: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.board-card strong {
+  font-size: 0.92rem;
+}

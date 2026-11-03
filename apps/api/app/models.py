@@ -246,3 +246,105 @@ class ProgramEvaluation(Base):
     package_id: Mapped[str | None] = mapped_column(ForeignKey("package_proposals.id"))
     result: Mapped[dict] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ContractorProject(Base):
+    __tablename__ = "contractor_projects"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    home_id: Mapped[str] = mapped_column(ForeignKey("homes.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    stage: Mapped[str] = mapped_column(String(32), nullable=False, default="lead", index=True)
+    building_model_id: Mapped[str | None] = mapped_column(ForeignKey("building_models.id"))
+    program_evaluation_id: Mapped[str | None] = mapped_column(ForeignKey("program_evaluations.id"))
+    program_evaluation_pack_version: Mapped[str | None] = mapped_column(String(32))
+    crm_ref: Mapped[dict | None] = mapped_column(JSON)
+    program_submission_confirmation: Mapped[dict | None] = mapped_column(JSON)
+    approval_confirmation: Mapped[dict | None] = mapped_column(JSON)
+    reservation_confirmation: Mapped[dict | None] = mapped_column(JSON)
+    final_submission_confirmation: Mapped[dict | None] = mapped_column(JSON)
+    payment_confirmation: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class StageEvent(Base):
+    __tablename__ = "stage_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    project_id: Mapped[str] = mapped_column(ForeignKey("contractor_projects.id"), nullable=False, index=True)
+    from_stage: Mapped[str | None] = mapped_column(String(32))
+    to_stage: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class PhotoSite(Base):
+    __tablename__ = "photo_sites"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("contractor_projects.id"), nullable=False, index=True)
+    home_id: Mapped[str] = mapped_column(ForeignKey("homes.id"), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    sidecar_uri: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class PhotoRecord(Base):
+    __tablename__ = "photo_records"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    site_id: Mapped[str] = mapped_column(ForeignKey("photo_sites.id"), nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("contractor_projects.id"), nullable=False)
+    stage: Mapped[str] = mapped_column(String(32), nullable=False)
+    tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    sidecar_uri: Mapped[str] = mapped_column(Text, nullable=False)
+    bytes_uri: Mapped[str] = mapped_column(Text, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class PhotoChecklistItem(Base):
+    __tablename__ = "photo_checklist_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    project_id: Mapped[str] = mapped_column(ForeignKey("contractor_projects.id"), nullable=False, index=True)
+    code: Mapped[str] = mapped_column(String(64), nullable=False)
+    label: Mapped[str] = mapped_column(Text, nullable=False)
+    required: Mapped[bool] = mapped_column(default=True)
+    completed: Mapped[bool] = mapped_column(default=False)
+    photo_id: Mapped[str | None] = mapped_column(String(36))
+
+
+class ProposalRecord(Base):
+    __tablename__ = "proposal_records"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    project_id: Mapped[str] = mapped_column(ForeignKey("contractor_projects.id"), nullable=False, index=True)
+    building_model_id: Mapped[str | None] = mapped_column(ForeignKey("building_models.id"))
+    program_evaluation_id: Mapped[str | None] = mapped_column(ForeignKey("program_evaluations.id"))
+    program_evaluation_pack_version: Mapped[str | None] = mapped_column(String(32))
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    measures: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
+    envelope_id: Mapped[str | None] = mapped_column(String(64))
+    envelope_status: Mapped[str | None] = mapped_column(String(32))
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class WorkOrder(Base):
+    __tablename__ = "work_orders"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    project_id: Mapped[str] = mapped_column(ForeignKey("contractor_projects.id"), nullable=False, index=True)
+    proposal_id: Mapped[str | None] = mapped_column(ForeignKey("proposal_records.id"))
+    building_model_id: Mapped[str | None] = mapped_column(ForeignKey("building_models.id"))
+    program_evaluation_id: Mapped[str | None] = mapped_column(ForeignKey("program_evaluations.id"))
+    program_evaluation_pack_version: Mapped[str | None] = mapped_column(String(32))
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    scope: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

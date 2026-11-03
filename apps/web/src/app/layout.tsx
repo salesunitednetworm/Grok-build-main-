@@ -18,7 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               Home Energy Modeling
               <span>OpenStudio-HPXML 1.12.0 · EnergyPlus 25.2.0</span>
             </Link>
-            <p className="fine">Not a DOE HOMES or ACCA-listed product</p>
+            <p className="fine">
+              <Link href="/projects">Job board</Link> · Not a DOE HOMES or ACCA-listed product
+            </p>
           </header>
           {children}
         </div>

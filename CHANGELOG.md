@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 — 2026-11-02
+
+- Contractor job operating-system slice: sixteen persisted stages from lead through payment. Program submission, approval, reservation, final submission, and payment stay blocked until an operator records an external `{source, reference}` confirmation. Those fields start unset.
+- Contractor board and homeowner “what to do next” views. Copy never invents kWh or rebate awards.
+- Ports first: `JobPhotoPort` + `PreSiteProFileAdapter` (disk + JSON sidecars, not a `pre-site-pro` clone), `CrmPort` + `FileCrmAdapter`, `ESignPort` + `FileESignAdapter`. File adapters stay `pending_vendor` and do not claim Zoho, HighLevel, or e-sign success.
+- Photo checklist plus proposal and work-order records that pin a building model and a compliance evaluation version when one exists.
+
 ## 0.4.0 — 2026-11-02
 
 - NC and Georgia HOMES/HEAR (HER) **program screens** from published state/federal sources. Versioned rule packs pin `pack_id` / `pack_version` on each evaluation. A newer pack flags `rule_pack_changed` and does not rewrite prior rows.

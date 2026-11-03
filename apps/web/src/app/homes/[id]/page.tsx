@@ -362,7 +362,13 @@ export default function HomeDetailPage() {
             </label>
             <label>
               ZIP
-              <input value={payload.site.postal_code} onChange={(e) => field("site.postal_code", e.target.value)} />
+              <input
+                autoComplete="postal-code"
+                inputMode="numeric"
+                value={payload.site.postal_code}
+                onChange={(e) => field("site.postal_code", e.target.value)}
+                onBlur={() => void lookupWeather()}
+              />
             </label>
             <label>
               IECC zone

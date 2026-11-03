@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { EXAMPLE_ADDRESSES, applyZipPlace, zip5 } from "@/lib/address";
 import { api } from "@/lib/api";
 import type { EngineStatus, Home } from "@/lib/types";
 
@@ -13,6 +14,7 @@ export default function HomePage() {
   const [city, setCity] = useState("Denver");
   const [stateCode, setStateCode] = useState("CO");
   const [postal, setPostal] = useState("80202");
+  const [placeNote, setPlaceNote] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -27,6 +29,38 @@ export default function HomePage() {
   useEffect(() => {
     void load();
   }, []);
+
+  function applyExample(index: string) {
+    const example = EXAMPLE_ADDRESSES[Number(index)];
+    if (!example) return;
+    setName(example.street);
+    setCity(example.city);
+    setStateCode(example.state);
+    setPostal(example.zip);
+    setPlaceNote("Example address filled. City and state also come from the OS-HPXML ZIP table when you change ZIP.");
+  }
+
+  async function fillFromZip(raw: string) {
+    const digits = zip5(raw);
+    setPostal(digits);
+    if (digits.length !== 5) {
+      setPlaceNote(null);
+      return;
+    }
+    try {
+      const station = await api.weather(digits);
+      const next = applyZipPlace(
+        { street: name, city, state: stateCode, zip: digits },
+        station,
+      );
+      setCity(next.city);
+      setStateCode(next.state);
+      setPostal(next.zip);
+      setPlaceNote(`${station.city}, ${station.state_code} from the OS-HPXML ZIP table. Not a street geocoder.`);
+    } catch {
+      setPlaceNote("ZIP is not in the OS-HPXML table. City and state were left as typed.");
+    }
+  }
 
   async function onCreate(event: FormEvent) {
     event.preventDefault();
@@ -61,27 +95,57 @@ export default function HomePage() {
           Building data → validate → HPXML → simulate → attic compare → bills → calibration scaffolding →
           packages. Calibration is preliminary / not certified.
         </p>
-        <form onSubmit={onCreate} className="grid">
+        <form onSubmit={onCreate} className="grid" autoComplete="on">
           <label>
-            Name
-            <input value={name} onChange={(e) => setName(e.target.value)} required />
+            Example address
+            <select defaultValue="" onChange={(e) => applyExample(e.target.value)}>
+              <option value="">Tap to fill street, city, state, ZIP</option>
+              {EXAMPLE_ADDRESSES.map((row, index) => (
+                <option key={row.zip} value={String(index)}>
+                  {row.street}, {row.city}, {row.state} {row.zip}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
-            City
-            <input value={city} onChange={(e) => setCity(e.target.value)} />
-          </label>
-          <label>
-            State
-            <input value={stateCode} maxLength={2} onChange={(e) => setStateCode(e.target.value.toUpperCase())} />
+            Street
+            <input
+              name="address-line1"
+              autoComplete="address-line1"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
           </label>
           <label>
             ZIP
-            <input value={postal} onChange={(e) => setPostal(e.target.value)} />
+            <input
+              name="postal-code"
+              autoComplete="postal-code"
+              inputMode="numeric"
+              value={postal}
+              onChange={(e) => void fillFromZip(e.target.value)}
+            />
+          </label>
+          <label>
+            City
+            <input name="address-level2" autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} />
+          </label>
+          <label>
+            State
+            <input
+              name="address-level1"
+              autoComplete="address-level1"
+              maxLength={2}
+              value={stateCode}
+              onChange={(e) => setStateCode(e.target.value.toUpperCase())}
+            />
           </label>
           <div className="row">
             <button type="submit">Create home</button>
           </div>
         </form>
+        {placeNote && <p className="fine">{placeNote}</p>}
         {error && <p className="errors">{error}</p>}
       </div>
 
