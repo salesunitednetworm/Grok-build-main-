@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, KeyboardEvent, useEffect, useId, useRef, useState } from "react";
-import { applySuggestion, applyZipPlace, zip5 } from "@/lib/address";
+import { applySuggestion, applyZipPlace, geocoderLabel, zip5 } from "@/lib/address";
 import { api } from "@/lib/api";
 import type { AddressSuggestion, EngineStatus, Home } from "@/lib/types";
 
@@ -96,7 +96,7 @@ export default function HomePage() {
     setPostal(next.zip);
     setPlaceNote(
       item.postal_code
-        ? `Filled from ${item.source === "census" ? "US Census Geocoder" : "Photon / OpenStreetMap"}.`
+        ? `Filled from ${geocoderLabel(item.source)}.`
         : "Street, city, and state filled. ZIP was not in the geocoder match.",
     );
     try {
@@ -116,7 +116,7 @@ export default function HomePage() {
       setPostal(standardized.zip);
       setPlaceNote(
         filled.postal_code
-          ? `Filled from ${filled.source === "census" ? "US Census Geocoder" : "Photon / OpenStreetMap"}.`
+          ? `Filled from ${geocoderLabel(filled.source)}.`
           : "Street, city, and state filled. ZIP was not in the geocoder match.",
       );
     } catch {
@@ -194,8 +194,8 @@ export default function HomePage() {
       <div className="card">
         <h1>Create a home</h1>
         <p className="fine">
-          Type a US street to see real Photon / OpenStreetMap matches. Selecting one fills street,
-          city, state, and ZIP when the geocoder has them. Census standardizes the match on select.
+          Type a US house number and street. A production geocoder returns house-level matches and
+          fills city, state, and ZIP when it has them. ZIP is never invented.
         </p>
         <form onSubmit={onCreate} className="grid" autoComplete="off">
           <label className="address-field">

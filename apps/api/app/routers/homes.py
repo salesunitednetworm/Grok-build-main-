@@ -23,6 +23,7 @@ from app.models import (
 from app.providers import default_provider
 from app.schemas import (
     AddressLookupIn,
+    AddressSuggestIn,
     AddressSuggestion,
     AddressSuggestionList,
     BuildingModelIn,
@@ -137,9 +138,10 @@ def defaults() -> dict:
     return default_payload()
 
 
-@router.get("/address-suggestions", response_model=AddressSuggestionList)
-def address_suggestions(q: str = "") -> AddressSuggestionList:
-    return AddressSuggestionList(query=q, source="photon", items=services_address.suggest_addresses(q))
+@router.post("/address-suggestions", response_model=AddressSuggestionList)
+def address_suggestions(body: AddressSuggestIn) -> AddressSuggestionList:
+    items, source = services_address.suggest_addresses(body.query)
+    return AddressSuggestionList(source=source, items=items)
 
 
 @router.post("/address-lookup", response_model=AddressSuggestion)
@@ -153,7 +155,7 @@ def address_lookup(body: AddressLookupIn) -> AddressSuggestion:
             city=body.city,
             state_code=body.state_code,
             postal_code=body.postal_code,
-            source=body.source or "photon",
+            source=body.source or "esri",
         )
     filled = services_address.fill_address(body.address, selected)
     if filled is None:

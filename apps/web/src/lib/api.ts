@@ -41,9 +41,10 @@ export const api = {
   status: () => request<EngineStatus>("/api/v1/status"),
   homes: () => request<Home[]>("/api/v1/homes"),
   addressSuggestions: (q: string) =>
-    request<{ query: string; source: string; items: AddressSuggestion[] }>(
-      `/api/v1/address-suggestions?q=${encodeURIComponent(q)}`,
-    ),
+    request<{ source: string; items: AddressSuggestion[] }>("/api/v1/address-suggestions", {
+      method: "POST",
+      body: JSON.stringify({ query: q }),
+    }),
   addressLookup: (body: {
     address: string;
     street?: string;

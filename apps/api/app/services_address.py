@@ -1,32 +1,46 @@
-"""Street-address suggestions from documented public geocoders.
+"""Production US street typeahead.
 
-Photon (https://photon.komoot.io/) is the typeahead source: it is a
-no-key OpenStreetMap geocoder that returns house-number matches for
-partial US streets. The US Census Bureau Geocoder
-(https://geocoding.geo.census.gov/geocoder/Geocoding_Services_API.html)
-is used on select to standardize city / state / ZIP when it has a
-match. Census is not used for typeahead; live probes return zero
-matches for incomplete streets such as \"12 Pine\".
+Photon / OSM ranked parks, businesses, and foreign streets ahead of
+ordinary US homes, so it is not used. Typeahead is a documented
+production geocoder, in this order when credentials exist:
 
-Neither path invents a street, city, state, or ZIP. Missing fields stay
-empty.
+1. Smarty US Autocomplete Pro — ``SMARTY_AUTH_ID`` + ``SMARTY_AUTH_TOKEN``
+2. Google Places Autocomplete — ``GOOGLE_PLACES_API_KEY`` or ``GOOGLE_MAPS_API_KEY``
+3. Mapbox Geocoding v5 — ``MAPBOX_ACCESS_TOKEN``
+4. Esri World Geocoding Service suggest (no key required)
+   https://developers.arcgis.com/rest/geocode/api-reference/geocoding-suggest.htm
+
+Selected lines are resolved to city / state / ZIP, then standardized
+with the US Census Geocoder onelineaddress when Census has a match.
+House number + street are required. Missing ZIP stays empty. Queries
+are not written to application logs.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
+from app.config import settings
 from app.schemas import AddressSuggestion
 
-PHOTON_URL = "https://photon.komoot.io/api/"
+ESRI_SUGGEST_URL = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/suggest"
+ESRI_FIND_URL = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates"
 CENSUS_URL = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
-USER_AGENT = "hems-address/0.5.1 (home energy modeling demo)"
+SMARTY_URL = "https://us-autocomplete-pro.api.smarty.com/lookup"
+GOOGLE_AUTOCOMPLETE_URL = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+GOOGLE_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
+MAPBOX_GEOCODE_URL = "https://api.mapbox.com/geocoding/v5/mapbox.places"
+USER_AGENT = "hems-address/0.5.2 (home energy modeling)"
 MIN_QUERY = 3
 SUGGEST_LIMIT = 8
+HOUSE_RE = re.compile(r"^(\d+[A-Za-z]?)\b")
+ZIP_RE = re.compile(r"^\d{5}(?:-\d{4})?$")
+HOUSE_LEVEL_TYPES = {"PointAddress", "StreetAddress", "Subaddress"}
 
-# Full names as Photon / OSM emit them. Abbreviations pass through.
 US_STATE_CODES: dict[str, str] = {
     "ALABAMA": "AL",
     "ALASKA": "AK",
@@ -129,29 +143,11 @@ def _title_street(value: str) -> str:
     return " ".join(parts)
 
 
-def street_from_photon(props: dict[str, Any]) -> str | None:
-    number = _text(props.get("housenumber"))
-    street = _text(props.get("street"))
-    if number and street:
-        return f"{number} {street}"
-    if street:
-        return street
-    return _text(props.get("name"))
-
-
-def city_from_photon(props: dict[str, Any]) -> str | None:
-    for key in ("city", "locality", "town", "village", "district"):
-        value = _text(props.get(key))
-        if value:
-            return value
-    return None
-
-
-def _is_us(props: dict[str, Any]) -> bool:
-    country = (_text(props.get("countrycode")) or _text(props.get("country")) or "").upper()
-    if country in {"US", "USA", "UNITED STATES"}:
-        return True
-    return state_code(props.get("state")) is not None and country in {"", "US", "USA", "UNITED STATES"}
+def house_number(value: str | None) -> str | None:
+    if not value:
+        return None
+    match = HOUSE_RE.match(value.strip())
+    return match.group(1) if match else None
 
 
 def _label(street: str, city: str | None, state: str | None, postal: str | None) -> str:
@@ -159,48 +155,332 @@ def _label(street: str, city: str | None, state: str | None, postal: str | None)
     return f"{street}, {tail}" if tail else street
 
 
-def map_photon_feature(feature: dict[str, Any]) -> AddressSuggestion | None:
-    props = feature.get("properties") if isinstance(feature, dict) else None
-    if not isinstance(props, dict) or not _is_us(props):
+def _suggestion(
+    *,
+    ident: str,
+    street: str,
+    city: str | None,
+    state: str | None,
+    postal: str | None,
+    source: str,
+    label: str | None = None,
+) -> AddressSuggestion | None:
+    if not street or house_number(street) is None:
         return None
-    street = street_from_photon(props)
-    city = city_from_photon(props)
-    state = state_code(props.get("state"))
-    postal = _text(props.get("postcode"))
-    if not street or not (city or state):
+    if not (city or state):
         return None
-    osm_type = _text(props.get("osm_type")) or "x"
-    osm_id = props.get("osm_id")
     return AddressSuggestion(
-        id=f"photon:{osm_type}:{osm_id}" if osm_id is not None else _label(street, city, state, postal),
-        label=_label(street, city, state, postal),
+        id=ident,
+        label=label or _label(street, city, state, postal),
         street=street,
         city=city,
         state_code=state,
         postal_code=postal,
-        source="photon",
+        source=source,
     )
 
 
-def suggest_addresses(query: str) -> list[AddressSuggestion]:
-    q = query.strip()
-    if len(q) < MIN_QUERY:
-        return []
-    try:
-        payload = fetch_json(PHOTON_URL, {"q": q, "limit": str(SUGGEST_LIMIT), "lang": "en"})
-    except (httpx.HTTPError, ValueError):
-        return []
+def parse_one_line(text: str) -> AddressSuggestion | None:
+    raw = text.strip()
+    if not raw:
+        return None
+    parts = [part.strip() for part in raw.split(",") if part.strip()]
+    if parts and parts[-1].upper() in {"USA", "US", "UNITED STATES"}:
+        parts = parts[:-1]
+    postal = None
+    state = None
+    if parts and ZIP_RE.match(parts[-1].split()[0] if parts[-1] else ""):
+        postal = parts.pop()[:5]
+    if parts:
+        state = state_code(parts[-1])
+        if state:
+            parts = parts[:-1]
+    city = parts.pop() if len(parts) >= 2 else None
+    street = ", ".join(parts) if parts else None
+    if not street:
+        return None
+    return _suggestion(
+        ident=f"line:{raw}",
+        street=street,
+        city=city,
+        state=state,
+        postal=postal,
+        source="parsed",
+        label=_label(street, city, state, postal),
+    )
+
+
+def _matches_query_house(query: str, street: str) -> bool:
+    wanted = house_number(query)
+    if wanted is None:
+        return house_number(street) is not None
+    return house_number(street) == wanted
+
+
+def _dedupe(items: list[AddressSuggestion]) -> list[AddressSuggestion]:
     seen: set[str] = set()
+    out: list[AddressSuggestion] = []
+    for item in items:
+        key = (item.street or "").lower() + "|" + (item.city or "").lower() + "|" + (item.state_code or "") + "|" + (item.postal_code or "")
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(item)
+        if len(out) >= SUGGEST_LIMIT:
+            break
+    return out
+
+
+def active_geocoder() -> str:
+    if settings.smarty_auth_id and settings.smarty_auth_token:
+        return "smarty"
+    if settings.google_places_api_key or settings.google_maps_api_key:
+        return "google"
+    if settings.mapbox_access_token:
+        return "mapbox"
+    return "esri"
+
+
+def map_esri_suggestion(row: dict[str, Any], query: str) -> AddressSuggestion | None:
+    if row.get("isCollection"):
+        return None
+    text = _text(row.get("text"))
+    magic = _text(row.get("magicKey"))
+    if not text:
+        return None
+    parsed = parse_one_line(text)
+    if parsed is None or not _matches_query_house(query, parsed.street):
+        return None
+    return parsed.model_copy(update={"id": f"esri:{magic}" if magic else parsed.id, "source": "esri"})
+
+
+def suggest_esri(query: str) -> list[AddressSuggestion]:
+    params = {
+        "text": query,
+        "f": "json",
+        "countryCode": "USA",
+        "category": "Address",
+        "maxSuggestions": "15",
+    }
+    if settings.arcgis_geocode_token:
+        params["token"] = settings.arcgis_geocode_token
+    payload = fetch_json(ESRI_SUGGEST_URL, params)
+    items: list[AddressSuggestion] = []
+    for row in payload.get("suggestions") or []:
+        if not isinstance(row, dict):
+            continue
+        mapped = map_esri_suggestion(row, query)
+        if mapped is not None:
+            items.append(mapped)
+    return _dedupe(items)
+
+
+def resolve_esri(label: str, magic_key: str) -> AddressSuggestion | None:
+    params = {
+        "SingleLine": label,
+        "magicKey": magic_key,
+        "f": "json",
+        "countryCode": "USA",
+        "category": "Address",
+        "maxLocations": "1",
+        "outFields": "Addr_type,StAddr,City,RegionAbbr,Postal,Score",
+        "forStorage": "false",
+    }
+    if settings.arcgis_geocode_token:
+        params["token"] = settings.arcgis_geocode_token
+    try:
+        payload = fetch_json(ESRI_FIND_URL, params)
+    except (httpx.HTTPError, ValueError):
+        return None
+    candidates = payload.get("candidates") or []
+    if not candidates or not isinstance(candidates[0], dict):
+        return None
+    attrs = candidates[0].get("attributes") or {}
+    if not isinstance(attrs, dict):
+        return None
+    if _text(attrs.get("Addr_type")) not in HOUSE_LEVEL_TYPES:
+        return parse_one_line(label)
+    street = _text(attrs.get("StAddr"))
+    city = _text(attrs.get("City"))
+    state = state_code(attrs.get("RegionAbbr"))
+    postal = _text(attrs.get("Postal"))
+    return _suggestion(
+        ident=f"esri:{magic_key}",
+        street=street or "",
+        city=city,
+        state=state,
+        postal=postal,
+        source="esri",
+    ) or parse_one_line(label)
+
+
+def map_smarty_suggestion(row: dict[str, Any], query: str) -> AddressSuggestion | None:
+    street = _text(row.get("street_line"))
+    city = _text(row.get("city"))
+    state = state_code(row.get("state"))
+    postal = _text(row.get("zipcode"))
+    if street is None or not _matches_query_house(query, street):
+        return None
+    return _suggestion(
+        ident=f"smarty:{street}|{city}|{state}|{postal}",
+        street=street,
+        city=city,
+        state=state,
+        postal=postal,
+        source="smarty",
+    )
+
+
+def suggest_smarty(query: str) -> list[AddressSuggestion]:
+    payload = fetch_json(
+        SMARTY_URL,
+        {
+            "search": query,
+            "max_results": str(SUGGEST_LIMIT),
+            "auth-id": settings.smarty_auth_id,
+            "auth-token": settings.smarty_auth_token,
+        },
+    )
+    items: list[AddressSuggestion] = []
+    for row in payload.get("suggestions") or []:
+        if isinstance(row, dict):
+            mapped = map_smarty_suggestion(row, query)
+            if mapped is not None:
+                items.append(mapped)
+    return _dedupe(items)
+
+
+def map_google_prediction(row: dict[str, Any], query: str) -> AddressSuggestion | None:
+    description = _text(row.get("description"))
+    place_id = _text(row.get("place_id"))
+    if not description:
+        return None
+    parsed = parse_one_line(description)
+    if parsed is None or not _matches_query_house(query, parsed.street):
+        return None
+    return parsed.model_copy(update={"id": f"google:{place_id}" if place_id else parsed.id, "source": "google"})
+
+
+def suggest_google(query: str) -> list[AddressSuggestion]:
+    key = settings.google_places_api_key or settings.google_maps_api_key
+    payload = fetch_json(
+        GOOGLE_AUTOCOMPLETE_URL,
+        {"input": query, "types": "address", "components": "country:us", "key": key},
+    )
+    items: list[AddressSuggestion] = []
+    for row in payload.get("predictions") or []:
+        if isinstance(row, dict):
+            mapped = map_google_prediction(row, query)
+            if mapped is not None:
+                items.append(mapped)
+    return _dedupe(items)
+
+
+def resolve_google(place_id: str) -> AddressSuggestion | None:
+    key = settings.google_places_api_key or settings.google_maps_api_key
+    try:
+        payload = fetch_json(
+            GOOGLE_DETAILS_URL,
+            {"place_id": place_id, "fields": "address_component,formatted_address", "key": key},
+        )
+    except (httpx.HTTPError, ValueError):
+        return None
+    result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+    comps = result.get("address_components") if isinstance(result, dict) else None
+    if not isinstance(comps, list):
+        return None
+    by_type: dict[str, str] = {}
+    for item in comps:
+        if not isinstance(item, dict):
+            continue
+        types = item.get("types") or []
+        value = _text(item.get("short_name")) or _text(item.get("long_name"))
+        if value:
+            for typ in types:
+                by_type[str(typ)] = value
+    number = by_type.get("street_number")
+    route = by_type.get("route")
+    street = " ".join(part for part in (number, route) if part)
+    city = by_type.get("locality") or by_type.get("sublocality") or by_type.get("neighborhood")
+    state = state_code(by_type.get("administrative_area_level_1"))
+    postal = by_type.get("postal_code")
+    return _suggestion(ident=f"google:{place_id}", street=street, city=city, state=state, postal=postal, source="google")
+
+
+def map_mapbox_feature(feature: dict[str, Any], query: str) -> AddressSuggestion | None:
+    props = feature.get("properties") if isinstance(feature, dict) else None
+    if feature.get("id") and str(feature.get("id")).startswith("poi."):
+        return None
+    number = _text((props or {}).get("address")) or _text(feature.get("address"))
+    street_name = _text(feature.get("text"))
+    street = " ".join(part for part in (number, street_name) if part) if number else None
+    city = None
+    state = None
+    postal = None
+    for item in feature.get("context") or []:
+        if not isinstance(item, dict):
+            continue
+        ident = str(item.get("id") or "")
+        text = _text(item.get("text"))
+        if ident.startswith("place") or ident.startswith("locality"):
+            city = city or text
+        elif ident.startswith("region"):
+            state = state_code(item.get("short_code") and str(item.get("short_code")).split("-")[-1]) or state_code(text)
+        elif ident.startswith("postcode"):
+            postal = text
+    if street is None:
+        parsed = parse_one_line(_text(feature.get("place_name")) or "")
+        return parsed.model_copy(update={"source": "mapbox"}) if parsed and _matches_query_house(query, parsed.street) else None
+    if not _matches_query_house(query, street):
+        return None
+    return _suggestion(
+        ident=f"mapbox:{feature.get('id')}",
+        street=street,
+        city=city,
+        state=state,
+        postal=postal,
+        source="mapbox",
+    )
+
+
+def suggest_mapbox(query: str) -> list[AddressSuggestion]:
+    url = f"{MAPBOX_GEOCODE_URL}/{quote(query)}.json"
+    payload = fetch_json(
+        url,
+        {
+            "access_token": settings.mapbox_access_token,
+            "country": "us",
+            "types": "address",
+            "limit": str(SUGGEST_LIMIT),
+            "autocomplete": "true",
+        },
+    )
     items: list[AddressSuggestion] = []
     for feature in payload.get("features") or []:
-        mapped = map_photon_feature(feature) if isinstance(feature, dict) else None
-        if mapped is None or mapped.label in seen:
-            continue
-        seen.add(mapped.label)
-        items.append(mapped)
-        if len(items) >= SUGGEST_LIMIT:
-            break
-    return items
+        if isinstance(feature, dict):
+            mapped = map_mapbox_feature(feature, query)
+            if mapped is not None:
+                items.append(mapped)
+    return _dedupe(items)
+
+
+def suggest_addresses(query: str) -> tuple[list[AddressSuggestion], str]:
+    q = query.strip()
+    source = active_geocoder()
+    if len(q) < MIN_QUERY or house_number(q) is None:
+        return [], source
+    try:
+        if source == "smarty":
+            items = suggest_smarty(q)
+        elif source == "google":
+            items = suggest_google(q)
+        elif source == "mapbox":
+            items = suggest_mapbox(q)
+        else:
+            items = suggest_esri(q)
+    except (httpx.HTTPError, ValueError, KeyError):
+        items = []
+    return items, source
 
 
 def map_census_match(match: dict[str, Any]) -> AddressSuggestion | None:
@@ -229,14 +509,14 @@ def map_census_match(match: dict[str, Any]) -> AddressSuggestion | None:
     postal = _text(comps.get("zip"))
     matched = _text(match.get("matchedAddress"))
     label = _title_street(matched) if matched else _label(street, city, state, postal)
-    return AddressSuggestion(
-        id=f"census:{label}",
-        label=label,
+    return _suggestion(
+        ident=f"census:{label}",
         street=street,
         city=city,
-        state_code=state,
-        postal_code=postal,
+        state=state,
+        postal=postal,
         source="census",
+        label=label,
     )
 
 
@@ -261,7 +541,6 @@ def merge_suggestion(
     primary: AddressSuggestion,
     standardized: AddressSuggestion | None,
 ) -> AddressSuggestion:
-    """Prefer Census fields when present. Never invent a missing ZIP."""
     if standardized is None:
         return primary
     return AddressSuggestion(
@@ -275,11 +554,22 @@ def merge_suggestion(
     )
 
 
+def _resolve_selected(selected: AddressSuggestion) -> AddressSuggestion:
+    ident = selected.id or ""
+    if ident.startswith("esri:") and ident.split(":", 1)[1]:
+        return resolve_esri(selected.label, ident.split(":", 1)[1]) or selected
+    if ident.startswith("google:") and ident.split(":", 1)[1]:
+        return resolve_google(ident.split(":", 1)[1]) or selected
+    return selected
+
+
 def fill_address(
     address: str,
     selected: AddressSuggestion | None = None,
 ) -> AddressSuggestion | None:
-    standardized = census_standardize(address)
-    if selected is None:
+    resolved = _resolve_selected(selected) if selected is not None else None
+    line = resolved.label if resolved is not None else address
+    standardized = census_standardize(line)
+    if resolved is None:
         return standardized
-    return merge_suggestion(selected, standardized)
+    return merge_suggestion(resolved, standardized)

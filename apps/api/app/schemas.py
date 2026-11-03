@@ -29,9 +29,12 @@ class AddressSuggestion(BaseModel):
 
 
 class AddressSuggestionList(BaseModel):
-    query: str
     source: str
     items: list[AddressSuggestion]
+
+
+class AddressSuggestIn(BaseModel):
+    query: str = Field(default="", max_length=300)
 
 
 class AddressLookupIn(BaseModel):
