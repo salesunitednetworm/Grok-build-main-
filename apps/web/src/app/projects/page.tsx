@@ -52,10 +52,10 @@ export default function BoardPage() {
   return (
     <main>
       <div className="card">
-        <h1>Contractor job board</h1>
+        <h1>Job board</h1>
         <p className="fine">
-          Stages persist on each project. Submission, reservation, approval, and payment stay unused
-          unless an external confirmation is recorded. This board is not a CRM and not a rebate portal.
+          Stages persist on each job. Submission, reservation, approval, and payment stay unused
+          unless an external confirmation is recorded. This is not a rebate portal.
         </p>
         <div className="row">
           <select value={homeId} onChange={(e) => setHomeId(e.target.value)}>

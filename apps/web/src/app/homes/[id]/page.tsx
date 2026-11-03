@@ -91,7 +91,8 @@ export default function HomeDetailPage() {
           setCalibration(null);
         }
         try {
-          setPackages(await api.packages(id));
+          const existing = await api.packages(id);
+          setPackages(existing);
         } catch {
           setPackages([]);
         }
@@ -110,6 +111,38 @@ export default function HomeDetailPage() {
       }
     })();
   }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function syncPackages() {
+      try {
+        let rows = await api.packages(id);
+        const needsRun =
+          rows.length === 0 || rows.every((row) => row.status === "failed" || row.status === "unavailable");
+        if (needsRun && status?.available) {
+          rows = await api.createPackages(id);
+        }
+        if (!cancelled) setPackages(rows);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Packages failed");
+      }
+    }
+    void syncPackages();
+    const timer = window.setInterval(() => {
+      void (async () => {
+        try {
+          const rows = await api.packages(id);
+          if (!cancelled) setPackages(rows);
+        } catch {
+          /* keep last rows */
+        }
+      })();
+    }, 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [id, status?.available]);
 
   const payload = model?.payload;
 
@@ -325,11 +358,16 @@ export default function HomeDetailPage() {
         </div>
       )}
 
-      <h1>{home.name}</h1>
-      <p className="fine">
-        {home.city} {home.state_code} {home.postal_code} · model v{model?.version} ·{" "}
-        <span className={`status ${model?.status}`}>{model?.status}</span>
-      </p>
+      <div className="page-head">
+        <h1>{home.name}</h1>
+        <div className="workspace-meta">
+          <span className="fine">
+            {[home.address_line1 || home.name, home.city, home.state_code, home.postal_code].filter(Boolean).join(" · ")}
+          </span>
+          <span className={`status ${model?.status}`}>{model?.status}</span>
+          {job && <span className={`status ${job.status}`}>baseline {job.status}</span>}
+        </div>
+      </div>
 
       <ul className="steps">
         {STEPS.map((item) => (
@@ -784,36 +822,42 @@ export default function HomeDetailPage() {
 
       {step === "Packages" && (
         <div className="card">
-          <h2>Package optimizer</h2>
+          <h2>Measure packages</h2>
           <p className="fine">
-            Attic R-49, air sealing to ACH50 1.5, and HPWH UEF 3.5 — every combination re-runs EnergyPlus. No added
-            percentage.
+            Attic R-49, ACH50 1.5, and HPWH UEF 3.5. Each row is a real EnergyPlus re-run. No added
+            percentage and no invented kWh.
           </p>
           <div className="row">
             <button type="button" disabled={busy} onClick={() => void proposePackages()}>
-              Propose packages and re-run the model
+              Re-run packages
             </button>
+            {packages.some((row) => row.status === "pending") && (
+              <span className="status pending">EnergyPlus running</span>
+            )}
           </div>
           {packages.map((row) => (
-            <div key={row.id} style={{ marginTop: 16 }}>
+            <div key={row.id} className="package-row">
               <p>
-                {row.name}: <span className={`status ${row.status}`}>{row.status}</span>
+                {row.name.replaceAll("_", " ")} <span className={`status ${row.status}`}>{row.status}</span>
               </p>
               <div className="grid">
                 <div className="metric">
                   Electricity delta
-                  <b>{formatDelta(row.electricity_kwh_delta, "kWh")}</b>
+                  <b>{formatDelta(row.electricity_kwh_delta, "kWh", row.status)}</b>
                 </div>
                 <div className="metric">
                   Gas delta
-                  <b>{formatDelta(row.natural_gas_therm_delta, "therm")}</b>
+                  <b>{formatDelta(row.natural_gas_therm_delta, "therm", row.status)}</b>
                 </div>
                 <div className="metric">
                   Total delta
-                  <b>{formatDelta(row.total_mbtu_delta, "MBtu")}</b>
+                  <b>{formatDelta(row.total_mbtu_delta, "MBtu", row.status)}</b>
                 </div>
               </div>
               <p className="fine">{row.notes}</p>
+              {row.status === "failed" && row.upgrade_job?.error_message && (
+                <p className="errors">{row.upgrade_job.error_message}</p>
+              )}
             </div>
           ))}
         </div>

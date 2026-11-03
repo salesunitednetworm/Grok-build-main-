@@ -1,15 +1,20 @@
 :root {
-  --paper: #f3eee4;
-  --ink: #1b1714;
-  --muted: #5c534a;
-  --line: #d4c8b4;
-  --card: #fffdf8;
-  --copper: #b5441a;
-  --copper-dark: #8c3010;
-  --ok: #1f6b4a;
-  --warn: #8a5a12;
-  --warn-bg: #f6e6c4;
-  --fail: #8b1e1e;
+  --bg: #f3f5f8;
+  --ink: #0f1720;
+  --muted: #5b6775;
+  --line: #d7dee7;
+  --card: #ffffff;
+  --accent: #0b6b7a;
+  --accent-dark: #084e59;
+  --accent-soft: #e6f3f5;
+  --ok: #0f7a4a;
+  --ok-bg: #e5f6ee;
+  --warn: #9a6408;
+  --warn-bg: #fff4d6;
+  --fail: #b42318;
+  --fail-bg: #fdecea;
+  --shadow: 0 10px 28px rgba(15, 23, 32, 0.06);
+  --radius: 16px;
 }
 
 * {
@@ -20,41 +25,41 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
-  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
+  font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
   line-height: 1.45;
+  font-size: 16px;
 }
 
 a {
-  color: var(--copper-dark);
+  color: var(--accent-dark);
 }
 
 code,
 pre,
 .mono {
-  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
 .shell {
-  max-width: 1080px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 28px 20px 80px;
+  padding: 20px 16px 88px;
 }
 
 .topbar {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 16px;
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 16px;
-  margin-bottom: 28px;
+  padding: 8px 0 20px;
 }
 
 .brand {
-  font-size: 1.35rem;
-  letter-spacing: 0.01em;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   text-decoration: none;
   color: var(--ink);
 }
@@ -63,17 +68,33 @@ pre,
   display: block;
   font-size: 0.72rem;
   color: var(--muted);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.nav a {
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .banner {
   background: var(--warn-bg);
-  border: 1px solid #e0c48a;
+  border: 1px solid #f0d48a;
   color: var(--warn);
   padding: 12px 14px;
   margin-bottom: 20px;
+  border-radius: 12px;
   font-size: 0.95rem;
 }
 
@@ -84,8 +105,17 @@ pre,
 .card {
   background: var(--card);
   border: 1px solid var(--line);
-  padding: 20px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px;
   margin-bottom: 18px;
+}
+
+.page-head h1,
+.card h1 {
+  margin: 0 0 8px;
+  font-size: 1.7rem;
+  letter-spacing: -0.03em;
 }
 
 .grid {
@@ -97,8 +127,9 @@ pre,
 label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 0.86rem;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
   color: var(--muted);
 }
 
@@ -106,29 +137,37 @@ input,
 select,
 textarea {
   font: inherit;
-  padding: 8px 10px;
+  padding: 11px 12px;
   border: 1px solid var(--line);
+  border-radius: 10px;
   background: #fff;
   color: var(--ink);
+  min-height: 44px;
 }
 
 button,
 .button {
   appearance: none;
-  border: 1px solid var(--ink);
-  background: var(--ink);
-  color: var(--paper);
-  padding: 8px 14px;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  padding: 11px 16px;
+  min-height: 44px;
+  border-radius: 10px;
   font: inherit;
+  font-weight: 650;
   cursor: pointer;
   text-decoration: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 button.secondary,
 .button.secondary {
-  background: transparent;
+  background: #fff;
   color: var(--ink);
+  border: 1px solid var(--line);
 }
 
 button:disabled {
@@ -145,32 +184,39 @@ button:disabled {
 
 .steps {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   margin: 0 0 20px;
-  padding: 0;
+  padding: 4px 0 8px;
   list-style: none;
+  overflow-x: auto;
 }
 
 .steps button {
-  background: transparent;
+  background: #fff;
   color: var(--muted);
-  border-color: var(--line);
+  border: 1px solid var(--line);
   font-size: 0.82rem;
-  padding: 6px 10px;
+  padding: 8px 12px;
+  white-space: nowrap;
 }
 
 .steps button.active {
   background: var(--ink);
-  color: var(--paper);
+  color: #fff;
   border-color: var(--ink);
 }
 
 .status {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eef2f6;
 }
 
 .status.valid,
@@ -178,13 +224,16 @@ button:disabled {
 .status.complete,
 .status.calibrated {
   color: var(--ok);
+  background: var(--ok-bg);
 }
 
 .status.unavailable,
 .status.draft,
 .status.pending,
-.status.uncalibrated {
+.status.uncalibrated,
+.status.running {
   color: var(--warn);
+  background: var(--warn-bg);
 }
 
 textarea.xml {
@@ -197,31 +246,37 @@ textarea.xml {
 .status.failed,
 .status.ineligible {
   color: var(--fail);
+  background: var(--fail-bg);
 }
 
 .status.incomplete,
 .status.screen_passed_not_submittable {
   color: var(--warn);
+  background: var(--warn-bg);
 }
 
 .xml {
   max-height: 420px;
   overflow: auto;
-  background: #1b1714;
-  color: #f3eee4;
+  background: #10161c;
+  color: #e8eef4;
   padding: 14px;
   font-size: 0.78rem;
   white-space: pre;
+  border-radius: 12px;
 }
 
 .metric {
-  border-top: 1px solid var(--line);
-  padding-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: #f8fafc;
 }
 
 .metric b {
   display: block;
   font-size: 1.35rem;
+  letter-spacing: -0.03em;
 }
 
 .home-list {
@@ -232,7 +287,13 @@ textarea.xml {
 
 .home-list li {
   border-bottom: 1px solid var(--line);
-  padding: 10px 0;
+  padding: 12px 0;
+}
+
+.home-list a {
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--ink);
 }
 
 .errors {
@@ -243,35 +304,36 @@ textarea.xml {
 h1,
 h2,
 h3 {
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .fine {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.92rem;
 }
 
 .board {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   overflow-x: auto;
   padding: 4px 0 16px;
 }
 
 .board-col {
-  min-width: 176px;
-  flex: 0 0 176px;
+  min-width: 188px;
+  flex: 0 0 188px;
   background: var(--card);
   border: 1px solid var(--line);
-  padding: 10px;
+  border-radius: 14px;
+  padding: 12px;
 }
 
 .board-col h3 {
   margin: 0 0 8px;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--muted);
 }
 
@@ -279,9 +341,10 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: var(--paper);
+  background: var(--bg);
   border: 1px solid var(--line);
-  padding: 8px;
+  border-radius: 10px;
+  padding: 10px;
   margin-bottom: 8px;
   text-decoration: none;
   color: inherit;
@@ -315,9 +378,10 @@ h3 {
   list-style: none;
   background: #fff;
   border: 1px solid var(--line);
+  border-radius: 12px;
   max-height: min(280px, 50vh);
   overflow: auto;
-  box-shadow: 0 10px 24px rgba(27, 23, 20, 0.08);
+  box-shadow: var(--shadow);
 }
 
 .suggest-list li {
@@ -341,5 +405,35 @@ h3 {
 
 .suggest-list li[aria-selected="true"],
 .suggest-list li:hover {
-  background: var(--paper);
+  background: var(--accent-soft);
+}
+
+.package-row {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  margin-top: 12px;
+}
+
+.workspace-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 720px) {
+  .shell {
+    padding: 12px 12px 96px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .card {
+    padding: 16px;
+  }
 }

@@ -17,3 +17,8 @@ test("missing comparison delta is not a percentage", () => {
   assert.equal(formatDelta(null, "kWh"), "Not available");
   assert.doesNotMatch(formatDelta(null, "kWh"), /%/);
 });
+
+test("pending deltas are labeled running, never zero", () => {
+  assert.equal(formatDelta(null, "kWh", "pending"), "Running…");
+  assert.notEqual(formatDelta(null, "kWh", "pending"), "0 kWh");
+});

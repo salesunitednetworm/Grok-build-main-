@@ -192,10 +192,10 @@ export default function HomePage() {
       )}
 
       <div className="card">
-        <h1>Create a home</h1>
+        <h1>Open a home</h1>
         <p className="fine">
-          Type a US house number and street. A production geocoder returns house-level matches and
-          fills city, state, and ZIP when it has them. ZIP is never invented.
+          Type a US house number and street. Matches fill city, state, and ZIP when the geocoder
+          has them. ZIP is never invented.
         </p>
         <form onSubmit={onCreate} className="grid" autoComplete="off">
           <label className="address-field">

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.3 — 2026-11-02
+
+- Package compare no longer sits on pending / “Not available” after EnergyPlus has a result or a real failure. The UI polls. Failed runs show the OS-HPXML `Error:` line. Conditioned-basement slab area is clamped to CFA so a smaller operator-entered floor area can still simulate.
+- Contractor web chrome restyled as a 2026 product (sans-serif, cards, status pills). Banner still says this product is not DOE HOMES / ACCA approved. No invented kWh.
+
 ## 0.5.2 — 2026-11-02
 
 - Address typeahead is a production defect fix. Photon / OSM ranked parks, businesses, and foreign streets; those results are no longer shown. Seeded example addresses were removed from the create-home form.

@@ -5,7 +5,13 @@ export function formatEnergy(value: number | null | undefined, unit: string): st
   return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unit}`;
 }
 
-export function formatDelta(value: number | null | undefined, unit: string): string {
+export function formatDelta(value: number | null | undefined, unit: string, status?: string): string {
+  if (status === "pending") {
+    return "Running…";
+  }
+  if (status === "failed") {
+    return "Failed";
+  }
   if (value === null || value === undefined || Number.isNaN(value)) {
     return "Not available";
   }
